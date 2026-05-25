@@ -3,41 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SRM CAPTCHA Solver — Test Runner</title>
+  <title>SRM CAPTCHA Solver — Advanced Test Runner</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
-  <!--
-    ═══════════════════════════════════════════════════════════════════════════
-    SRM CAPTCHA SOLVER — OFFLINE TEST RUNNER
-    ═══════════════════════════════════════════════════════════════════════════
-
-    WHAT IS THIS?
-    This is a standalone browser page (NOT a Chrome extension) that lets you:
-      1. Drag and drop CAPTCHA images from your computer
-      2. See EVERY preprocessing stage side by side
-      3. See the OCR result and confidence score
-      4. Tune preprocessing settings without touching the extension
-
-    HOW TO USE:
-      1. Open this file directly in Chrome (File > Open, or drag into browser)
-      2. Drag a CAPTCHA image onto the drop zone
-      3. Click "Run Full Pipeline"
-      4. Review each stage — look for where quality degrades
-
-    REQUIREMENTS:
-      The two large library files must be in ../extension/libs/ relative to this file:
-        - opencv.js
-        - tesseract.min.js
-        - tesseract.worker.min.js
-        - tesseract-core.wasm.js
-        - tessdata/eng.traineddata
-
-    See docs/setup-guide.md for download instructions.
-    ═══════════════════════════════════════════════════════════════════════════
-  -->
 
   <style>
     :root {
@@ -54,328 +24,67 @@
       --muted:     #8b949e;
       --dimmed:    #484f58;
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px;
-      -webkit-font-smoothing: antialiased;
-    }
-
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; -webkit-font-smoothing: antialiased; }
     h1 { font-size: 22px; font-weight: 700; color: var(--text); }
     h2 { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
     p  { color: var(--muted); font-size: 13px; line-height: 1.6; }
-
-    .page-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-
-    .page-header .logo {
-      width: 40px; height: 40px;
-      background: rgba(99,102,241,0.15);
-      border: 1px solid rgba(99,102,241,0.3);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-    }
-
-    .subtitle {
-      color: var(--muted);
-      font-size: 13px;
-      margin-bottom: 28px;
-    }
-
-    /* ── Layout ── */
+    .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .page-header .logo { width: 40px; height: 40px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
     .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
-
-    /* ── Cards ── */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-    }
-
-    /* ── Drop Zone ── */
-    .drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: 10px;
-      padding: 32px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      margin-bottom: 16px;
-      background: var(--elevated);
-    }
-
-    .drop-zone:hover, .drop-zone.drag-over {
-      border-color: var(--accent);
-      background: rgba(99,102,241,0.06);
-    }
-
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.2s ease; margin-bottom: 16px; background: var(--elevated); }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: rgba(99,102,241,0.06); }
     .drop-zone-icon { font-size: 36px; margin-bottom: 8px; }
     .drop-zone-text { font-size: 13px; color: var(--muted); line-height: 1.5; }
     .drop-zone-text strong { color: var(--accent); }
-
     #fileInput { display: none; }
-
-    /* ── Input Preview ── */
-    #inputPreview {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    #inputImg {
-      max-width: 100%;
-      max-height: 120px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      image-rendering: pixelated;
-    }
-
+    #inputPreview { display: none; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 16px; }
+    #inputImg { max-width: 100%; max-height: 120px; border: 1px solid var(--border); border-radius: 8px; image-rendering: pixelated; }
     .input-meta { font-size: 11px; color: var(--dimmed); font-family: 'JetBrains Mono', monospace; }
-
-    /* ── Settings Panel ── */
-    .settings-grid {
-      display: grid;
-      gap: 14px;
-    }
-
-    .setting-item label {
-      display: block;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-
-    .setting-item input[type="range"] {
-      width: 100%;
-      accent-color: var(--accent);
-    }
-
-    .setting-item input[type="number"] {
-      width: 70px;
-      background: var(--elevated);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      padding: 4px 8px;
-      outline: none;
-    }
-
-    .setting-item input[type="number"]:focus { border-color: var(--accent); }
-
-    .range-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
+    .settings-grid { display: grid; gap: 14px; }
+    .setting-item label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+    .setting-item input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .range-row { display: flex; align-items: center; gap: 10px; }
     .range-row input[type="range"] { flex: 1; }
     .range-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); min-width: 32px; text-align: right; font-weight: 600; }
-
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .checkbox-row input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; }
-
-    /* ── Buttons ── */
-    .btn-run {
-      width: 100%;
-      padding: 11px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-family: 'Inter', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      letter-spacing: 0.02em;
-    }
-
+    .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+    .btn-run { width: 100%; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .btn-run:hover { background: #4f46e5; box-shadow: 0 0 20px rgba(99,102,241,0.4); }
-    .btn-run:active { transform: scale(0.98); }
     .btn-run:disabled { background: var(--elevated); color: var(--dimmed); cursor: not-allowed; box-shadow: none; }
-
-    /* ── Result Summary ── */
-    .result-summary {
-      display: none;
-      background: var(--elevated);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px;
-      margin-top: 16px;
-    }
-
+    .result-summary { display: none; background: var(--elevated); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 16px; }
     .result-summary.visible { display: block; }
-
-    .result-text {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 28px;
-      font-weight: 500;
-      letter-spacing: 0.2em;
-      color: var(--accent);
-      margin-bottom: 8px;
-    }
-
-    .result-meta {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-top: 8px;
-    }
-
-    .result-meta-item {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
+    .result-text { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 500; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 8px; }
+    .result-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+    .result-meta-item { display: flex; flex-direction: column; gap: 2px; }
     .result-meta-item .label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dimmed); }
     .result-meta-item .value { font-size: 13px; font-weight: 600; color: var(--text); }
-
-    .confidence-pill {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .confidence-pill.high   { background: rgba(34,197,94,0.15);  color: var(--green); }
+    .confidence-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+    .confidence-pill.high { background: rgba(34,197,94,0.15); color: var(--green); }
     .confidence-pill.medium { background: rgba(245,158,11,0.15); color: var(--yellow); }
-    .confidence-pill.low    { background: rgba(239,68,68,0.15);  color: var(--red); }
-
-    /* ── Stages Grid ── */
-    .stages-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 16px;
-    }
-
-    .stage-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-      transition: border-color 0.2s;
-    }
-
+    .confidence-pill.low { background: rgba(239,68,68,0.15); color: var(--red); }
+    .stages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+    .stage-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
     .stage-card:hover { border-color: var(--accent); }
-
-    .stage-header {
-      padding: 8px 12px;
-      background: var(--elevated);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
+    .stage-header { padding: 8px 12px; background: var(--elevated); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .stage-name { font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: 0.04em; }
     .stage-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dimmed); }
-
-    .stage-img-wrap {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
-      min-height: 80px;
-      background: #000;
-    }
-
-    .stage-img {
-      max-width: 100%;
-      max-height: 100px;
-      image-rendering: pixelated;
-      border-radius: 4px;
-    }
-
-    .stage-placeholder {
-      color: var(--dimmed);
-      font-size: 11px;
-      text-align: center;
-    }
-
-    /* ── Log Panel ── */
-    #logPanel {
-      margin-top: 16px;
-      background: var(--elevated);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      max-height: 200px;
-      overflow-y: auto;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-    }
-
-    .log-line {
-      padding: 3px 12px;
-      border-bottom: 1px solid var(--border);
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
+    .stage-img-wrap { display: flex; align-items: center; justify-content: center; padding: 12px; min-height: 80px; background: #000; }
+    .stage-img { max-width: 100%; max-height: 100px; image-rendering: pixelated; border-radius: 4px; }
+    .stage-placeholder { color: var(--dimmed); font-size: 11px; text-align: center; }
+    #logPanel { margin-top: 16px; background: var(--elevated); border: 1px solid var(--border); border-radius: 10px; max-height: 200px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    .log-line { padding: 3px 12px; border-bottom: 1px solid var(--border); color: var(--muted); line-height: 1.5; }
     .log-line:last-child { border-bottom: none; }
-    .log-line.info  { color: #60a5fa; }
-    .log-line.warn  { color: var(--yellow); }
+    .log-line.info { color: #60a5fa; }
     .log-line.error { color: var(--red); }
     .log-line.debug { color: var(--dimmed); }
-
-    /* ── Spinner ── */
-    .spinner {
-      display: inline-block;
-      width: 14px; height: 14px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Status bar ── */
-    .status-bar {
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 500;
-      margin-top: 12px;
-      display: none;
-    }
-
-    .status-bar.info    { background: rgba(59,130,246,0.1);  color: #60a5fa;        border: 1px solid rgba(59,130,246,0.2); display: block; }
-    .status-bar.success { background: rgba(34,197,94,0.1);   color: var(--green);   border: 1px solid rgba(34,197,94,0.2);  display: block; }
-    .status-bar.error   { background: rgba(239,68,68,0.1);   color: var(--red);     border: 1px solid rgba(239,68,68,0.2);  display: block; }
-
-    /* Scrollbar */
+    .status-bar { padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; margin-top: 12px; display: none; }
+    .status-bar.info { background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); display: block; }
+    .status-bar.success { background: rgba(34,197,94,0.1); color: var(--green); border: 1px solid rgba(34,197,94,0.2); display: block; }
+    .status-bar.error { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); display: block; }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -384,182 +93,100 @@
 <body>
 
 <div class="page-header">
-  <div class="logo">🔍</div>
-  <div>
-    <h1>CAPTCHA Test Runner</h1>
-  </div>
+  <div class="logo">🔬</div>
+  <div><h1>Advanced CAPTCHA Test Runner</h1></div>
 </div>
-<p class="subtitle">
-  Offline preprocessing & OCR tester for the SRM CAPTCHA Solver · No extension needed ·
-  Drag in a CAPTCHA image to analyse it through the full pipeline
-</p>
+<p class="subtitle">Offline Advanced Preprocessing (CLAHE, Adaptive Threshold, Contours) & OCR tester.</p>
 
 <div class="layout">
-
   <!-- ══ LEFT PANEL: Controls ══ -->
   <div class="left-panel">
-
-    <!-- Drop Zone -->
     <div class="card">
       <h2>📁 Input Image</h2>
-
       <div class="drop-zone" id="dropZone">
         <div class="drop-zone-icon">🖼️</div>
-        <div class="drop-zone-text">
-          <strong>Drag & drop</strong> a CAPTCHA image here<br/>
-          or <strong>click to browse</strong>
-        </div>
+        <div class="drop-zone-text"><strong>Drag & drop</strong> a CAPTCHA here<br/>or <strong>click to browse</strong></div>
       </div>
       <input type="file" id="fileInput" accept="image/*" />
-
       <div id="inputPreview">
         <img id="inputImg" alt="Input CAPTCHA" />
         <div class="input-meta" id="inputMeta"></div>
       </div>
     </div>
 
-    <!-- Preprocessing Settings -->
     <div class="card">
-      <h2>⚙️ Preprocessing Settings</h2>
+      <h2>⚙️ Preprocessing (Advanced)</h2>
       <div class="settings-grid">
-
         <div class="setting-item">
-          <label>Gaussian Blur Kernel (odd number)</label>
-          <div class="range-row">
-            <input type="range" id="blurKernel" min="1" max="9" step="2" value="3" />
-            <span class="range-val" id="blurKernelVal">3</span>
-          </div>
+          <label>Median Blur (Denoise)</label>
+          <div class="range-row"><input type="range" id="medianBlurKernel" min="1" max="5" step="2" value="3" /><span class="range-val" id="medianBlurKernelVal">3</span></div>
         </div>
-
         <div class="setting-item">
-          <label>Character Thinning (Separates Overlaps)</label>
-          <div class="range-row">
-            <input type="range" id="thinKernel" min="1" max="5" step="1" value="1" />
-            <span class="range-val" id="thinKernelVal">1</span>
-          </div>
+          <label>Adaptive Threshold Block Size</label>
+          <div class="range-row"><input type="range" id="adaptiveBlockSize" min="3" max="51" step="2" value="15" /><span class="range-val" id="adaptiveBlockSizeVal">15</span></div>
         </div>
-
         <div class="setting-item">
-          <label>Morphology Kernel Size</label>
-          <div class="range-row">
-            <input type="range" id="morphKernel" min="1" max="5" step="1" value="2" />
-            <span class="range-val" id="morphKernelVal">2</span>
-          </div>
+          <label>Adaptive Threshold C (Constant)</label>
+          <div class="range-row"><input type="range" id="adaptiveC" min="0" max="30" step="1" value="10" /><span class="range-val" id="adaptiveCVal">10</span></div>
         </div>
-
+        <div class="setting-item">
+          <label>Min Contour Area (Remove Dust)</label>
+          <div class="range-row"><input type="range" id="minContourArea" min="0" max="100" step="1" value="10" /><span class="range-val" id="minContourAreaVal">10</span></div>
+        </div>
+        <div class="setting-item">
+          <label>Max Contour Area (Remove Blocks)</label>
+          <div class="range-row"><input type="range" id="maxContourArea" min="500" max="5000" step="100" value="2000" /><span class="range-val" id="maxContourAreaVal">2000</span></div>
+        </div>
+        <div class="setting-item">
+          <label>Thinning Kernel</label>
+          <div class="range-row"><input type="range" id="thinKernel" min="1" max="5" step="1" value="1" /><span class="range-val" id="thinKernelVal">1</span></div>
+        </div>
+        <div class="setting-item">
+          <label>Morphology Close Kernel</label>
+          <div class="range-row"><input type="range" id="morphKernel" min="1" max="5" step="1" value="2" /><span class="range-val" id="morphKernelVal">2</span></div>
+        </div>
         <div class="setting-item">
           <label>Upscale Factor</label>
-          <div class="range-row">
-            <input type="range" id="upscaleFactor" min="1" max="5" step="1" value="3" />
-            <span class="range-val" id="upscaleFactorVal">3×</span>
-          </div>
+          <div class="range-row"><input type="range" id="upscaleFactor" min="1" max="5" step="1" value="3" /><span class="range-val" id="upscaleFactorVal">3×</span></div>
         </div>
-
         <div class="setting-item">
           <label>Options</label>
-          <div class="checkbox-row">
-            <input type="checkbox" id="chkRemoveHLines" />
-            <span>Remove horizontal lines</span>
-          </div>
-          <div class="checkbox-row" style="margin-top:6px">
-            <input type="checkbox" id="chkRemoveVLines" />
-            <span>Remove vertical lines</span>
-          </div>
+          <div class="checkbox-row"><input type="checkbox" id="chkCLAHE" checked /><span>Use CLAHE (Contrast)</span></div>
+          <div class="checkbox-row" style="margin-top:6px"><input type="checkbox" id="chkSharpen" checked /><span>Unsharp Mask (Sharpen)</span></div>
         </div>
-
       </div>
     </div>
 
-    <!-- OCR Settings -->
-    <div class="card">
-      <h2>🔤 OCR Settings</h2>
-      <div class="settings-grid">
-
-        <div class="setting-item">
-          <label>PSM Mode</label>
-          <select id="psmMode" style="width:100%; background:var(--elevated); border:1px solid var(--border); border-radius:6px; color:var(--text); padding:6px 8px; font-family:inherit; font-size:12px; outline:none;">
-            <option value="8" selected>PSM 8 — Single word (recommended)</option>
-            <option value="7">PSM 7 — Single text line</option>
-            <option value="13">PSM 13 — Raw line</option>
-            <option value="6">PSM 6 — Uniform block</option>
-          </select>
-        </div>
-
-        <div class="setting-item">
-          <label>Character Whitelist</label>
-          <input type="text" id="charWhitelist"
-            value="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-            style="width:100%;background:var(--elevated);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;"
-          />
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Run Button -->
-    <button class="btn-run" id="btnRun" disabled>
-      🚀 Run Full Pipeline
-    </button>
-
-    <!-- Status -->
+    <button class="btn-run" id="btnRun" disabled>🚀 Run Advanced Pipeline</button>
     <div class="status-bar" id="statusBar"></div>
 
-    <!-- Result Summary -->
     <div class="result-summary" id="resultSummary">
       <p style="font-size:10px;color:var(--dimmed);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">OCR Result</p>
       <div class="result-text" id="resultText">—</div>
-
       <div class="result-meta">
-        <div class="result-meta-item">
-          <span class="label">Confidence</span>
-          <span class="value" id="resultConfidence">—</span>
-        </div>
-        <div class="result-meta-item">
-          <span class="label">Preprocess</span>
-          <span class="value" id="resultPrepTime">—</span>
-        </div>
-        <div class="result-meta-item">
-          <span class="label">OCR Time</span>
-          <span class="value" id="resultOcrTime">—</span>
-        </div>
-        <div class="result-meta-item">
-          <span class="label">Final Size</span>
-          <span class="value" id="resultSize">—</span>
-        </div>
+        <div class="result-meta-item"><span class="label">Confidence</span><span class="value" id="resultConfidence">—</span></div>
+        <div class="result-meta-item"><span class="label">Preprocess</span><span class="value" id="resultPrepTime">—</span></div>
+        <div class="result-meta-item"><span class="label">OCR Time</span><span class="value" id="resultOcrTime">—</span></div>
       </div>
     </div>
-
   </div>
 
-  <!-- ══ RIGHT PANEL: Stages + Logs ══ -->
+  <!-- ══ RIGHT PANEL ══ -->
   <div class="right-panel">
-
-    <!-- Preprocessing Stages -->
     <div class="card">
-      <h2>🔬 Preprocessing Stages</h2>
+      <h2>🔬 Advanced Stages</h2>
       <div class="stages-grid" id="stagesGrid">
-        <!-- Populated by JS after pipeline runs -->
-        <div class="stage-placeholder" style="grid-column:1/-1;padding:40px;text-align:center;color:var(--dimmed);">
-          Run the pipeline to see all preprocessing stages here
-        </div>
+        <div class="stage-placeholder" style="grid-column:1/-1;padding:40px;">Run pipeline to see stages</div>
       </div>
     </div>
-
-    <!-- Log Output -->
     <div class="card">
-      <h2>📋 Pipeline Logs</h2>
-      <div id="logPanel">
-        <div class="log-line debug">Waiting for image…</div>
-      </div>
+      <h2>📋 Logs</h2>
+      <div id="logPanel"><div class="log-line debug">Waiting for image…</div></div>
     </div>
-
   </div>
 </div>
 
-<!-- ══ Load Libraries ══ -->
-<!-- OpenCV.js — loads asynchronously, calls onOpenCvReady when done -->
 <script>
-  // OpenCV.js notifies readiness via this global callback
   window.Module = {};
   function onOpenCvReady() {
     window._opencvReady = true;
@@ -567,456 +194,261 @@
     checkReady();
   }
 </script>
-<script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady()" onerror="log('OpenCV.js failed to load from CDN', 'error')"></script>
-
-<!-- Tesseract.js -->
-<script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"
-  onerror="log('Tesseract.js failed to load from CDN', 'error')">
-</script>
+<script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady()"></script>
+<script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
 'use strict';
 
-// ─── State ────────────────────────────────────────────────────────────────────
-
 let inputImageBase64 = null;
-let tesseractWorker  = null;
-let isWorkerReady    = false;
-
-// ─── Library Ready Check ──────────────────────────────────────────────────────
+let tesseractWorker = null;
 
 function checkReady() {
-  const opencvOk   = typeof cv !== 'undefined' && cv.Mat;
-  const tesseractOk = typeof Tesseract !== 'undefined';
-
-  if (opencvOk && tesseractOk) {
-    log('All libraries loaded — ready to run!', 'info');
-    setStatus('info', '✅ Libraries loaded. Drop a CAPTCHA image to start.');
+  if (typeof cv !== 'undefined' && cv.Mat && typeof Tesseract !== 'undefined') {
+    setStatus('info', '✅ Libraries loaded. Drop an image to start.');
+    document.getElementById('btnRun').disabled = !inputImageBase64;
   }
 }
 
-// ─── Drop Zone ────────────────────────────────────────────────────────────────
-
-const dropZone  = document.getElementById('dropZone');
+// ── Drop Zone ──
+const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
-
 dropZone.addEventListener('click', () => fileInput.click());
-
-dropZone.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  dropZone.classList.add('drag-over');
-});
-
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-
-dropZone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) loadFile(file);
-});
-
-fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) loadFile(fileInput.files[0]);
-});
+dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if(f) loadFile(f); });
+fileInput.addEventListener('change', () => { if(fileInput.files[0]) loadFile(fileInput.files[0]); });
 
 function loadFile(file) {
-  if (!file.type.startsWith('image/')) {
-    setStatus('error', '❌ File must be an image (PNG, JPG, BMP, etc.)');
-    return;
-  }
-
+  if (!file.type.startsWith('image/')) return setStatus('error', '❌ Must be image');
   const reader = new FileReader();
   reader.onload = (e) => {
     inputImageBase64 = e.target.result;
-
-    // Show preview
     const img = document.getElementById('inputImg');
-    img.src   = inputImageBase64;
-    img.onload = () => {
-      document.getElementById('inputMeta').textContent =
-        `${img.naturalWidth}×${img.naturalHeight}px · ${(file.size / 1024).toFixed(1)}KB · ${file.name}`;
-    };
+    img.src = inputImageBase64;
+    img.onload = () => document.getElementById('inputMeta').textContent = `${img.naturalWidth}×${img.naturalHeight}px`;
     document.getElementById('inputPreview').style.display = 'flex';
-
     document.getElementById('btnRun').disabled = false;
-    setStatus('info', `✅ Image loaded: ${file.name} — click "Run Full Pipeline"`);
-    log(`Image loaded: ${file.name} (${file.size} bytes)`, 'info');
+    setStatus('info', `✅ Image loaded: ${file.name}`);
   };
   reader.readAsDataURL(file);
 }
 
-// ─── Settings ─────────────────────────────────────────────────────────────────
-
-function bindSlider(id, displayId, suffix = '') {
-  const slider  = document.getElementById(id);
-  const display = document.getElementById(displayId);
+// ── Sliders ──
+function bindSlider(id, suffix = '') {
+  const slider = document.getElementById(id);
+  const display = document.getElementById(id + 'Val');
   display.textContent = slider.value + suffix;
-  slider.addEventListener('input', () => {
-    display.textContent = slider.value + suffix;
-  });
+  slider.addEventListener('input', () => display.textContent = slider.value + suffix);
 }
+['medianBlurKernel', 'adaptiveBlockSize', 'adaptiveC', 'minContourArea', 'maxContourArea', 'thinKernel', 'morphKernel'].forEach(id => bindSlider(id));
+bindSlider('upscaleFactor', '×');
 
-bindSlider('blurKernel',    'blurKernelVal');
-bindSlider('thinKernel',    'thinKernelVal');
-bindSlider('morphKernel',   'morphKernelVal');
-bindSlider('upscaleFactor', 'upscaleFactorVal', '×');
-
-// ─── Run Pipeline ─────────────────────────────────────────────────────────────
-
-document.getElementById('btnRun').addEventListener('click', runPipeline);
-
-async function runPipeline() {
-  if (!inputImageBase64) {
-    setStatus('error', '❌ No image loaded');
-    return;
-  }
-
+// ── Run Pipeline ──
+document.getElementById('btnRun').addEventListener('click', async () => {
+  if (!inputImageBase64) return;
   const btn = document.getElementById('btnRun');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> Running…';
-
-  clearLog();
-  clearStages();
-  setStatus('info', 'Running pipeline…');
-
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Running…';
+  document.getElementById('logPanel').innerHTML = '';
   document.getElementById('resultSummary').classList.remove('visible');
 
   try {
-    // ── Step 1: Preprocess ─────────────────────────────────────────────────
     log('── PREPROCESSING ──', 'info');
-    const prepStart = performance.now();
+    const tPrep = performance.now();
     const prepResult = await runPreprocessing(inputImageBase64);
-    const prepTime   = Math.round(performance.now() - prepStart);
-    log(`Preprocessing complete in ${prepTime}ms (Otsu threshold: ${prepResult.otsuThreshold})`, 'info');
+    const prepTime = Math.round(performance.now() - tPrep);
 
-    // ── Step 2: OCR ───────────────────────────────────────────────────────
     log('── OCR ──', 'info');
-    const ocrStart = performance.now();
+    const tOcr = performance.now();
     const ocrResult = await runOCR(prepResult.processedBase64);
-    const ocrTime   = Math.round(performance.now() - ocrStart);
-    log(`OCR complete in ${ocrTime}ms`, 'info');
-    log(`Result: "${ocrResult.text}" (confidence: ${ocrResult.confidence}%)`, 'info');
+    const ocrTime = Math.round(performance.now() - tOcr);
 
-    // ── Render results ────────────────────────────────────────────────────
     renderStages(prepResult.stages, prepResult.timingMs);
-    renderResult(ocrResult, prepTime, ocrTime, prepResult.dimensions);
-
-    setStatus('success', `✅ Done! OCR: "${ocrResult.text}" — ${ocrResult.confidence}% confidence`);
-
+    renderResult(ocrResult, prepTime, ocrTime);
+    setStatus('success', `✅ Done! OCR: "${ocrResult.text}" (${ocrResult.confidence}%)`);
   } catch (err) {
     log(`ERROR: ${err.message}`, 'error');
     setStatus('error', `❌ Pipeline failed: ${err.message}`);
-    console.error(err);
   } finally {
-    btn.disabled = false;
-    btn.innerHTML = '🚀 Run Full Pipeline';
+    btn.disabled = false; btn.innerHTML = '🚀 Run Advanced Pipeline';
   }
-}
+});
 
-// ─── Preprocessing (OpenCV.js) ────────────────────────────────────────────────
-
+// ── Preprocessing ──
 async function runPreprocessing(base64PNG) {
-  if (typeof cv === 'undefined' || !cv.Mat) {
-    throw new Error('OpenCV.js not loaded — check libs/opencv.js path');
-  }
+  const getInt = id => parseInt(document.getElementById(id).value);
+  const cfg = {
+    useCLAHE: document.getElementById('chkCLAHE').checked,
+    medianBlurKernel: getInt('medianBlurKernel'),
+    adaptiveBlockSize: getInt('adaptiveBlockSize'),
+    adaptiveC: getInt('adaptiveC'),
+    minContourArea: getInt('minContourArea'),
+    maxContourArea: getInt('maxContourArea'),
+    thinKernelSize: getInt('thinKernel'),
+    morphKernelSize: getInt('morphKernel'),
+    upscaleFactor: getInt('upscaleFactor'),
+    sharpen: document.getElementById('chkSharpen').checked
+  };
 
-  const blurKernel  = parseInt(document.getElementById('blurKernel').value);
-  const thinKernel  = parseInt(document.getElementById('thinKernel').value);
-  const morphKernel = parseInt(document.getElementById('morphKernel').value);
-  const upscale     = parseInt(document.getElementById('upscaleFactor').value);
-  const rmHLines    = document.getElementById('chkRemoveHLines').checked;
-  const rmVLines    = document.getElementById('chkRemoveVLines').checked;
-
-  const timingMs = {};
-  const stages   = {};
-  const mats     = [];
+  const timingMs = {}; const stages = {}; const mats = [];
+  const m = mat => { mats.push(mat); return mat; };
 
   try {
-    // Load image
     let t = performance.now();
-    const { canvas } = await base64ToCanvas(base64PNG);
+    const { canvas } = await new Promise(r => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+        r({ canvas: c });
+      };
+      img.src = base64PNG;
+    });
+    const srcMat = m(cv.imread(canvas));
     stages.original = base64PNG;
-    log(`Stage 1: Image loaded — ${canvas.width}×${canvas.height}px`, 'debug');
 
-    const src = cv.imread(canvas);
-    mats.push(src);
-    timingMs.load = ms(t);
-
-    // Grayscale
+    // 2. Grayscale & CLAHE
     t = performance.now();
-    const gray = new cv.Mat(); mats.push(gray);
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-    stages.grayscale = matToBase64(gray);
-    timingMs.grayscale = ms(t);
-    log(`Stage 2: Grayscale — ${timingMs.grayscale}ms`, 'debug');
+    const grayMat = m(new cv.Mat());
+    cv.cvtColor(srcMat, grayMat, cv.COLOR_RGBA2GRAY);
+    let contrastMat = grayMat;
+    if (cfg.useCLAHE) {
+      contrastMat = m(new cv.Mat());
+      const clahe = m(new cv.CLAHE(2.0, new cv.Size(8,8)));
+      clahe.apply(grayMat, contrastMat);
+    }
+    stages.contrast = matToBase64(contrastMat);
+    timingMs.contrast = ms(t);
 
-    // Gaussian Blur
+    // 3. Median Blur
     t = performance.now();
-    const blurred = new cv.Mat(); mats.push(blurred);
-    cv.GaussianBlur(gray, blurred, new cv.Size(blurKernel, blurKernel), 0);
-    stages.blurred = matToBase64(blurred);
+    let blurMat = contrastMat;
+    if (cfg.medianBlurKernel > 1) {
+      blurMat = m(new cv.Mat());
+      cv.medianBlur(contrastMat, blurMat, cfg.medianBlurKernel);
+    }
+    stages.blurred = matToBase64(blurMat);
     timingMs.blur = ms(t);
-    log(`Stage 3: Gaussian blur (${blurKernel}×${blurKernel}) — ${timingMs.blur}ms`, 'debug');
 
-    // Otsu Threshold
+    // 4. Adaptive Threshold
     t = performance.now();
-    const binary = new cv.Mat(); mats.push(binary);
-    const otsuThreshold = cv.threshold(blurred, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
-    stages.binary = matToBase64(binary);
+    const binaryMat = m(new cv.Mat());
+    cv.adaptiveThreshold(blurMat, binaryMat, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, cfg.adaptiveBlockSize, cfg.adaptiveC);
+    stages.binary = matToBase64(binaryMat);
     timingMs.threshold = ms(t);
-    log(`Stage 4: Otsu threshold=${Math.round(otsuThreshold)} — ${timingMs.threshold}ms`, 'debug');
 
-    // Optional: Line removal
-    let lineRemoved = binary;
-    if (rmHLines || rmVLines) {
-      t = performance.now();
-      lineRemoved = new cv.Mat(); mats.push(lineRemoved);
-      binary.copyTo(lineRemoved);
-
-      if (rmHLines) {
-        const hk = cv.Mat.ones(1, 20, cv.CV_8U); mats.push(hk);
-        const hl = new cv.Mat(); mats.push(hl);
-        const hli = new cv.Mat(); mats.push(hli);
-        cv.morphologyEx(lineRemoved, hl, cv.MORPH_OPEN, hk);
-        cv.bitwise_not(hl, hli);
-        cv.bitwise_and(lineRemoved, hli, lineRemoved);
-      }
-      if (rmVLines) {
-        const vk = cv.Mat.ones(15, 1, cv.CV_8U); mats.push(vk);
-        const vl = new cv.Mat(); mats.push(vl);
-        const vli = new cv.Mat(); mats.push(vli);
-        cv.morphologyEx(lineRemoved, vl, cv.MORPH_OPEN, vk);
-        cv.bitwise_not(vl, vli);
-        cv.bitwise_and(lineRemoved, vli, lineRemoved);
-      }
-      stages.lineRemoved = matToBase64(lineRemoved);
-      timingMs.lineRemoval = ms(t);
-      log(`Stage 4b: Line removal — ${timingMs.lineRemoval}ms`, 'debug');
-    }
-
-    // Character Thinning (Dilation of white background = thinning of black text)
-    let thinned = lineRemoved;
-    if (thinKernel > 1) {
-      t = performance.now();
-      thinned = new cv.Mat(); mats.push(thinned);
-      const tk = cv.Mat.ones(thinKernel, thinKernel, cv.CV_8U); mats.push(tk);
-      cv.dilate(lineRemoved, thinned, tk);
-      stages.thinned = matToBase64(thinned);
-      timingMs.thinning = ms(t);
-      log(`Stage 4c: Character Thinning (${thinKernel}×${thinKernel}) — ${timingMs.thinning}ms`, 'debug');
-    }
-
-    // Morphology Close
+    // 5. Contour Filtering
     t = performance.now();
-    const closed = new cv.Mat(); mats.push(closed);
-    const mk = cv.Mat.ones(morphKernel, morphKernel, cv.CV_8U); mats.push(mk);
-    cv.morphologyEx(thinned, closed, cv.MORPH_CLOSE, mk);
-    stages.morphology = matToBase64(closed);
+    let filteredMat = binaryMat;
+    const invertedMat = m(new cv.Mat());
+    cv.bitwise_not(binaryMat, invertedMat);
+    
+    const contours = m(new cv.MatVector());
+    const hierarchy = m(new cv.Mat());
+    cv.findContours(invertedMat, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    
+    const goodContoursMat = m(cv.Mat.zeros(invertedMat.rows, invertedMat.cols, cv.CV_8UC1));
+    let removed = 0;
+    for (let i = 0; i < contours.size(); ++i) {
+      const contour = contours.get(i);
+      const area = cv.contourArea(contour);
+      if (area >= cfg.minContourArea && area <= cfg.maxContourArea) {
+        cv.drawContours(goodContoursMat, contours, i, new cv.Scalar(255), -1, cv.LINE_8, hierarchy, 0);
+      } else { removed++; }
+      contour.delete();
+    }
+    filteredMat = m(new cv.Mat());
+    cv.bitwise_not(goodContoursMat, filteredMat);
+    log(`Removed ${removed} bad contours (noise/blocks)`, 'debug');
+    stages.contours = matToBase64(filteredMat);
+    timingMs.contours = ms(t);
+
+    // 6. Thin & Morph
+    t = performance.now();
+    let processedMat = filteredMat;
+    if (cfg.thinKernelSize > 1) {
+      const thinnedMat = m(new cv.Mat());
+      const tk = m(cv.Mat.ones(cfg.thinKernelSize, cfg.thinKernelSize, cv.CV_8U));
+      cv.dilate(processedMat, thinnedMat, tk);
+      processedMat = thinnedMat;
+      stages.thinned = matToBase64(processedMat);
+    }
+    if (cfg.morphKernelSize > 1) {
+      const closedMat = m(new cv.Mat());
+      const mk = m(cv.Mat.ones(cfg.morphKernelSize, cfg.morphKernelSize, cv.CV_8U));
+      cv.morphologyEx(processedMat, closedMat, cv.MORPH_CLOSE, mk);
+      processedMat = closedMat;
+      stages.morphology = matToBase64(processedMat);
+    }
     timingMs.morphology = ms(t);
-    log(`Stage 5: Morphology close (${morphKernel}×${morphKernel}) — ${timingMs.morphology}ms`, 'debug');
 
-    // Upscale
+    // 7. Upscale & Sharpen
     t = performance.now();
-    const upscaled = new cv.Mat(); mats.push(upscaled);
-    const newW = closed.cols * upscale;
-    const newH = closed.rows * upscale;
-    cv.resize(closed, upscaled, new cv.Size(newW, newH), 0, 0, cv.INTER_CUBIC);
+    const upscaledMat = m(new cv.Mat());
+    cv.resize(processedMat, upscaledMat, new cv.Size(processedMat.cols * cfg.upscaleFactor, processedMat.rows * cfg.upscaleFactor), 0, 0, cv.INTER_CUBIC);
+    let finalMat = upscaledMat;
+    if (cfg.sharpen) {
+      const blurredUp = m(new cv.Mat());
+      cv.GaussianBlur(upscaledMat, blurredUp, new cv.Size(0,0), 3);
+      finalMat = m(new cv.Mat());
+      cv.addWeighted(upscaledMat, 1.5, blurredUp, -0.5, 0, finalMat);
+    }
+    stages.final = matToBase64(finalMat);
     timingMs.upscale = ms(t);
-    log(`Stage 6: Upscaled ${closed.cols}×${closed.rows} → ${newW}×${newH} — ${timingMs.upscale}ms`, 'debug');
 
-    // Export
-    const outCanvas = matToCanvas(upscaled);
-    const processedBase64 = outCanvas.toDataURL('image/png');
-    stages.final = processedBase64;
-
-    return { processedBase64, otsuThreshold: Math.round(otsuThreshold), stages, timingMs, dimensions: { width: newW, height: newH } };
-
+    return { processedBase64: stages.final, stages, timingMs };
   } finally {
     mats.forEach(m => { try { if (!m.isDeleted()) m.delete(); } catch {} });
   }
 }
 
-// ─── OCR (Tesseract.js) ───────────────────────────────────────────────────────
-
+// ── OCR ──
 async function runOCR(imageBase64) {
-  if (typeof Tesseract === 'undefined') {
-    throw new Error('Tesseract.js not loaded — check libs/tesseract.min.js path');
-  }
-
-  const psmMode   = document.getElementById('psmMode').value;
-  const whitelist = document.getElementById('charWhitelist').value;
-
-  // Create or reuse worker
   if (!tesseractWorker) {
-    log('Initialising Tesseract worker (first run — takes ~2s)…', 'info');
+    log('Init Tesseract (first run ~2s)…', 'info');
     tesseractWorker = await Tesseract.createWorker('eng', 1, {
-      langPath:   'https://tessdata.projectnaptha.com/4.0.0',
+      langPath: 'https://tessdata.projectnaptha.com/4.0.0',
       workerPath: 'https://unpkg.com/tesseract.js@5/dist/worker.min.js',
-      corePath:   'https://unpkg.com/tesseract.js-core@5/tesseract-core-simd.wasm.js',
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          log(`OCR progress: ${Math.round(m.progress * 100)}%`, 'debug');
-        }
-      }
+      corePath: 'https://unpkg.com/tesseract.js-core@5/tesseract-core-simd.wasm.js',
     });
-    log('Tesseract worker ready ✓', 'info');
   }
-
   await tesseractWorker.setParameters({
-    tessedit_pageseg_mode:    parseInt(psmMode),
-    tessedit_char_whitelist:  whitelist,
-    load_system_dawg:         '0',
-    load_freq_dawg:           '0',
+    tessedit_pageseg_mode: 8,
+    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+    load_system_dawg: '0', load_freq_dawg: '0'
   });
-
   const { data } = await tesseractWorker.recognize(imageBase64);
-
-  const cleanText = (data.text || '').replace(/[^A-Za-z0-9]/g, '').trim();
-
-  return {
-    text:       cleanText,
-    rawText:    data.text,
-    confidence: Math.round(data.confidence),
-    words:      data.words || [],
-  };
+  return { text: (data.text || '').replace(/[^A-Za-z0-9]/g, '').trim(), confidence: Math.round(data.confidence) };
 }
 
-// ─── Render Stages ────────────────────────────────────────────────────────────
-
-const STAGE_NAMES = {
-  original:    '1. Original',
-  grayscale:   '2. Grayscale',
-  blurred:     '3. Gaussian Blur',
-  binary:      '4. Otsu Threshold',
-  lineRemoved: '4b. Line Removal',
-  thinned:     '4c. Thinning',
-  morphology:  '5. Morphology',
-  final:       '6. Upscaled (Final)',
-};
-
+// ── Render ──
+const STAGE_NAMES = { original: '1. Original', contrast: '2. CLAHE Contrast', blurred: '3. Median Blur', binary: '4. Adaptive Thresh', contours: '5. Contour Filter', thinned: '6. Thinning', morphology: '7. Morphology', final: '8. Scaled & Sharpened' };
 function renderStages(stages, timingMs) {
-  const grid = document.getElementById('stagesGrid');
-  grid.innerHTML = '';
-
+  const grid = document.getElementById('stagesGrid'); grid.innerHTML = '';
   for (const [key, label] of Object.entries(STAGE_NAMES)) {
     if (!stages[key]) continue;
-
-    const time = timingMs[key.replace('grayscale','grayscale').replace('binary','threshold').replace('lineRemoved','lineRemoval')];
-
-    const card = document.createElement('div');
-    card.className = 'stage-card';
-
-    if (key === 'final') {
-      card.style.border = '2px solid var(--accent)';
-    }
-
-    card.innerHTML = `
-      <div class="stage-header">
-        <span class="stage-name">${label}</span>
-        ${time ? `<span class="stage-time">${time}ms</span>` : ''}
-      </div>
-      <div class="stage-img-wrap">
-        <img class="stage-img" src="${stages[key]}" alt="${label}" />
-      </div>
-    `;
-
-    grid.appendChild(card);
+    const time = timingMs[key] || timingMs[key.replace('contrast', 'contrast')] || '';
+    const div = document.createElement('div'); div.className = 'stage-card';
+    if (key === 'final') div.style.border = '2px solid var(--accent)';
+    div.innerHTML = `<div class="stage-header"><span class="stage-name">${label}</span><span class="stage-time">${time}ms</span></div><div class="stage-img-wrap"><img class="stage-img" src="${stages[key]}" /></div>`;
+    grid.appendChild(div);
   }
 }
-
-function renderResult(ocrResult, prepTime, ocrTime, dimensions) {
-  const { text, confidence } = ocrResult;
-
-  document.getElementById('resultText').textContent        = text || '(empty)';
-  document.getElementById('resultPrepTime').textContent    = `${prepTime}ms`;
-  document.getElementById('resultOcrTime').textContent     = `${ocrTime}ms`;
-  document.getElementById('resultSize').textContent        = `${dimensions.width}×${dimensions.height}px`;
-
-  const confClass = confidence >= 80 ? 'high' : confidence >= 50 ? 'medium' : 'low';
-  document.getElementById('resultConfidence').innerHTML =
-    `<span class="confidence-pill ${confClass}">${confidence}%</span>`;
-
+function renderResult(ocrResult, prepTime, ocrTime) {
+  document.getElementById('resultText').textContent = ocrResult.text || '(empty)';
+  document.getElementById('resultPrepTime').textContent = `${prepTime}ms`;
+  document.getElementById('resultOcrTime').textContent = `${ocrTime}ms`;
+  const c = ocrResult.confidence;
+  document.getElementById('resultConfidence').innerHTML = `<span class="confidence-pill ${c>=80?'high':c>=50?'medium':'low'}">${c}%</span>`;
   document.getElementById('resultSummary').classList.add('visible');
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function ms(t) { return Math.round(performance.now() - t); }
+function matToBase64(mat) { const c = document.createElement('canvas'); c.width = mat.cols; c.height = mat.rows; cv.imshow(c, mat); return c.toDataURL('image/png'); }
+function log(msg, lvl = 'debug') { const p = document.getElementById('logPanel'); const l = document.createElement('div'); l.className = `log-line ${lvl}`; l.textContent = msg; p.appendChild(l); p.scrollTop = p.scrollHeight; }
+function setStatus(t, m) { const b = document.getElementById('statusBar'); b.className = `status-bar ${t}`; b.textContent = m; }
 
-function base64ToCanvas(base64PNG) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
-      c.getContext('2d').drawImage(img, 0, 0);
-      resolve({ canvas: c, img });
-    };
-    img.onerror = reject;
-    img.src = base64PNG;
-  });
-}
-
-function matToCanvas(mat) {
-  const c = document.createElement('canvas');
-  c.width = mat.cols; c.height = mat.rows;
-  cv.imshow(c, mat);
-  return c;
-}
-
-function matToBase64(mat) {
-  return matToCanvas(mat).toDataURL('image/png');
-}
-
-// ─── Logging ──────────────────────────────────────────────────────────────────
-
-function log(message, level = 'debug') {
-  const panel = document.getElementById('logPanel');
-  const line  = document.createElement('div');
-  line.className = `log-line ${level}`;
-  const time = new Date().toLocaleTimeString('en-IN', { hour12: false });
-  line.textContent = `[${time}] ${message}`;
-  panel.appendChild(line);
-  panel.scrollTop = panel.scrollHeight;
-}
-
-function clearLog() {
-  document.getElementById('logPanel').innerHTML = '';
-}
-
-function clearStages() {
-  document.getElementById('stagesGrid').innerHTML = `
-    <div class="stage-placeholder" style="grid-column:1/-1;padding:40px;text-align:center;color:var(--dimmed);">
-      Running pipeline…
-    </div>
-  `;
-}
-
-function setStatus(type, message) {
-  const bar = document.getElementById('statusBar');
-  bar.className = `status-bar ${type}`;
-  bar.textContent = message;
-}
-
-// ─── Init ─────────────────────────────────────────────────────────────────────
-
-// Check if Tesseract is already loaded
-if (typeof Tesseract !== 'undefined') {
-  log('Tesseract.js detected ✓', 'info');
-}
-
-// Check after a short delay to let scripts load
-setTimeout(() => {
-  if (typeof Tesseract === 'undefined') {
-    log('Tesseract.js not found — check libs/ path', 'error');
-    setStatus('error', '❌ Tesseract.js not loaded. See setup-guide.md for library downloads.');
-  }
-  if (!window._opencvReady) {
-    log('OpenCV.js not yet ready (may still be loading)…', 'warn');
-  }
-}, 1500);
-
+setTimeout(checkReady, 1000);
 </script>
 </body>
 </html>

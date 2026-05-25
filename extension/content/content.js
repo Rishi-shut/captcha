@@ -272,9 +272,9 @@ async function runPipeline(attempt = 1) {
     // We try 3 different preprocessing strategies and pick the one with the highest confidence.
     // This allows us to handle varying CAPTCHA distortion styles automatically.
     const strategies = [
-      { name: 'Standard', config: { blurKernelSize: 3, thinKernelSize: 1, morphKernelSize: 2 } },
-      { name: 'Thinned',  config: { blurKernelSize: 1, thinKernelSize: 2, morphKernelSize: 1 } },
-      { name: 'Bolded',   config: { blurKernelSize: 5, thinKernelSize: 1, morphKernelSize: 3 } }
+      { name: 'Standard',    config: { medianBlurKernel: 3, adaptiveBlockSize: 15, adaptiveC: 10, thinKernelSize: 1, morphKernelSize: 2 } },
+      { name: 'Thick/Heavy', config: { medianBlurKernel: 1, adaptiveBlockSize: 21, adaptiveC: 15, thinKernelSize: 2, morphKernelSize: 1 } },
+      { name: 'Thin/Faint',  config: { medianBlurKernel: 5, adaptiveBlockSize: 11, adaptiveC: 5,  thinKernelSize: 1, morphKernelSize: 3 } }
     ];
 
     let bestResult = null;
