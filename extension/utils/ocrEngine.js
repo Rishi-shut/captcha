@@ -74,8 +74,8 @@ const SRMOCREngine = {
 
         // Configure Tesseract parameters for CAPTCHA recognition
         await worker.setParameters({
-          // PSM 8 = Single word mode (best for 4–8 character CAPTCHAs)
-          tessedit_pageseg_mode: Tesseract.PSM.SINGLE_WORD,
+          // PSM 7 = Single text line (best for line CAPTCHAs)
+          tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
           // Restrict to alphanumeric characters only
           tessedit_char_whitelist: CHAR_WHITELIST,
           // Disable dictionary — CAPTCHA is not a real word
@@ -126,13 +126,19 @@ const SRMOCREngine = {
     SRMLogger.debug('OCR', `Recognition completed in ${elapsed}ms`);
 
     // Clean the raw OCR text:
-    //   - Trim whitespace
-    //   - Remove any characters not in our whitelist
-    //   - Collapse multiple spaces
-    const rawText    = data.text || '';
-    const cleanText  = rawText
-      .replace(/[^A-Za-z0-9]/g, '')  // Remove non-alphanumeric
+    const rawText = data.text || '';
+    
+    let cleanText = rawText
+      .replace(/[^A-Za-z0-9]/g, '')
       .trim();
+
+    // Remove spaces/newlines
+    cleanText = cleanText.replace(/\s+/g, '');
+
+    // Optional length trimming
+    if (cleanText.length > 6) {
+      cleanText = cleanText.slice(0, 6);
+    }
 
     const confidence = Math.round(data.confidence) || 0;
 

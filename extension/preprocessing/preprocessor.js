@@ -5,45 +5,42 @@
  * PURPOSE
  * ─────────────────────────────────────────────────────────────────────────────
  * A highly robust, production-grade image processing pipeline designed specifically
- * for noisy text CAPTCHAs. Converts raw noisy images into clean, crisp, high-contrast
- * binary images that Tesseract can read flawlessly.
+ * for noisy text CAPTCHAs.
  *
- * NEW ARCHITECTURE:
- *   1. Grayscale
- *   2. Contrast Enhancement (CLAHE) — normalizes uneven lighting
- *   3. Median Blur — destroys salt-and-pepper noise while preserving hard edges
- *   4. Adaptive Thresholding — calculates binarization locally, ignoring shadows
- *   5. Contour Filtering — measures every black blob; erases dust dots and huge blocks
- *   6. Morphology — closes gaps inside characters cut by noise lines
- *   7. Upscale (Bicubic) — enlarges to Tesseract's optimal font size
- *   8. Unsharp Masking — crispifies the upscaled edges
+ * NEW PIPELINE ORDER (Optimized for text preservation):
+ *   1. Upscale FIRST (preserves edges)
+ *   2. Grayscale
+ *   3. CLAHE Contrast
+ *   4. Gaussian Blur
+ *   5. Adaptive Threshold (Inverse)
+ *   6. Contour Filtering (Removes thin noise lines, dust, and huge blocks)
+ *   7. Morphology Open (Removes leftover thin lines)
+ *   8. Border Padding (Helps Tesseract)
+ *   9. Sharpening
  */
 
 'use strict';
 
 const PREPROCESSING_CONFIG = {
+  upscaleFactor: 4,
+
   // ── 1. Contrast ──
   useCLAHE: true,
   claheClipLimit: 2.0,
 
-  // ── 2. Denoise ──
-  medianBlurKernel: 3, // Must be odd (1, 3, 5). Excellent for removing dots without edge blur.
-
-  // ── 3. Binarization (Adaptive) ──
+  // ── 2. Binarization (Adaptive) ──
   adaptiveBlockSize: 15, // Size of local neighborhood. Must be odd.
-  adaptiveC: 10,         // Constant subtracted from mean. Higher = less noise but thinner text.
+  adaptiveC: 10,         // Constant subtracted from mean.
 
-  // ── 4. Contour Filtering ──
+  // ── 3. Contour Filtering ──
   filterContours: true,
-  minContourArea: 10,    // Remove dust dots smaller than this
-  maxContourArea: 2000,  // Remove huge structural lines/boxes larger than this
+  minContourArea: 12,    // Remove dust dots smaller than this
+  maxContourArea: 1500,  // Remove huge structural lines/boxes larger than this
 
-  // ── 5. Morphology ──
+  // ── 4. Morphology ──
   morphKernelSize: 2,    // 2=Fills gaps. 1=Off.
-  thinKernelSize: 1,     // Dilation to separate overlapping text. 1=Off.
 
-  // ── 6. Scaling & Sharpening ──
-  upscaleFactor: 3,
+  // ── 5. Scaling & Sharpening ──
   sharpen: true,
 };
 
@@ -92,10 +89,27 @@ const SRMPreprocessor = {
       timingMs.load = Math.round(performance.now() - t);
       this._saveStage(stages, 'original', canvas);
 
-      // ── STAGE 2: Grayscale & CLAHE ──────────────────────────────────────────
+      // ── STAGE 2: Upscale FIRST ──────────────────────────────────────────────
+      t = performance.now();
+      const upscaledSrc = m(new cv.Mat());
+      cv.resize(
+        srcMat,
+        upscaledSrc,
+        new cv.Size(
+          srcMat.cols * PREPROCESSING_CONFIG.upscaleFactor,
+          srcMat.rows * PREPROCESSING_CONFIG.upscaleFactor
+        ),
+        0,
+        0,
+        cv.INTER_CUBIC
+      );
+      timingMs.upscale = Math.round(performance.now() - t);
+      this._saveStage(stages, 'upscaled', this._matToCanvas(upscaledSrc));
+
+      // ── STAGE 3: Grayscale & CLAHE ──────────────────────────────────────────
       t = performance.now();
       const grayMat = m(new cv.Mat());
-      cv.cvtColor(srcMat, grayMat, cv.COLOR_RGBA2GRAY);
+      cv.cvtColor(upscaledSrc, grayMat, cv.COLOR_RGBA2GRAY);
 
       let contrastMat = grayMat;
       if (PREPROCESSING_CONFIG.useCLAHE) {
@@ -106,17 +120,15 @@ const SRMPreprocessor = {
       timingMs.contrast = Math.round(performance.now() - t);
       this._saveStage(stages, 'contrast', this._matToCanvas(contrastMat));
 
-      // ── STAGE 3: Median Blur ────────────────────────────────────────────────
+      // ── STAGE 4: Gaussian Blur ──────────────────────────────────────────────
       t = performance.now();
-      let blurMat = contrastMat;
-      if (PREPROCESSING_CONFIG.medianBlurKernel > 1) {
-        blurMat = m(new cv.Mat());
-        cv.medianBlur(contrastMat, blurMat, PREPROCESSING_CONFIG.medianBlurKernel);
-      }
+      const blurMat = m(new cv.Mat());
+      cv.GaussianBlur(contrastMat, blurMat, new cv.Size(3, 3), 0);
       timingMs.blur = Math.round(performance.now() - t);
       this._saveStage(stages, 'blurred', this._matToCanvas(blurMat));
 
-      // ── STAGE 4: Adaptive Thresholding ──────────────────────────────────────
+      // ── STAGE 5: Adaptive Threshold (INVERSE) ───────────────────────────────
+      // Text becomes white, background becomes black
       t = performance.now();
       const binaryMat = m(new cv.Mat());
       cv.adaptiveThreshold(
@@ -124,104 +136,137 @@ const SRMPreprocessor = {
         binaryMat,
         255,
         cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv.THRESH_BINARY,
+        cv.THRESH_BINARY_INV,
         PREPROCESSING_CONFIG.adaptiveBlockSize,
         PREPROCESSING_CONFIG.adaptiveC
       );
       timingMs.threshold = Math.round(performance.now() - t);
       this._saveStage(stages, 'binary', this._matToCanvas(binaryMat));
 
-      // ── STAGE 5: Contour Filtering (Destroy Noise) ──────────────────────────
+      // ── STAGE 6: Contour Filtering (Remove thin lines & dots) ───────────────
       t = performance.now();
       let filteredMat = binaryMat;
-      if (PREPROCESSING_CONFIG.filterContours) {
-        // Find contours works on WHITE foreground on BLACK background.
-        // Our text is currently BLACK on WHITE background. We must invert first.
-        const invertedMat = m(new cv.Mat());
-        cv.bitwise_not(binaryMat, invertedMat);
+      
+      // We also create a debug Mat to draw boxes around contours
+      const debugMat = m(new cv.Mat());
+      cv.cvtColor(binaryMat, debugMat, cv.COLOR_GRAY2RGBA);
 
+      if (PREPROCESSING_CONFIG.filterContours) {
         const contours = m(new cv.MatVector());
         const hierarchy = m(new cv.Mat());
-        cv.findContours(invertedMat, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        cv.findContours(binaryMat, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-        // Create a blank black canvas to draw the good contours onto
-        const goodContoursMat = m(cv.Mat.zeros(invertedMat.rows, invertedMat.cols, cv.CV_8UC1));
+        const goodContoursMat = m(cv.Mat.zeros(binaryMat.rows, binaryMat.cols, cv.CV_8UC1));
 
         let removedCount = 0;
         for (let i = 0; i < contours.size(); ++i) {
           const contour = contours.get(i);
           const area = cv.contourArea(contour);
-          
-          // Only draw contours that are within our valid text size limits
-          if (area >= PREPROCESSING_CONFIG.minContourArea && area <= PREPROCESSING_CONFIG.maxContourArea) {
-            // Draw filled contour in white
-            cv.drawContours(goodContoursMat, contours, i, new cv.Scalar(255), -1, cv.LINE_8, hierarchy, 0);
+          const rect = cv.boundingRect(contour);
+
+          const width = rect.width;
+          const height = rect.height;
+          const aspectRatio = width / height;
+
+          // Detect long thin lines
+          const isThinHorizontal = aspectRatio > 5;
+          const isThinVertical = aspectRatio < 0.2;
+          // Tiny dust
+          const isTinyNoise = area < PREPROCESSING_CONFIG.minContourArea;
+          // Huge blocks
+          const isHugeBlob = area > PREPROCESSING_CONFIG.maxContourArea;
+
+          const shouldRemove = isThinHorizontal || isThinVertical || isTinyNoise || isHugeBlob;
+
+          if (!shouldRemove) {
+            // Keep valid text
+            cv.drawContours(goodContoursMat, contours, i, new cv.Scalar(255), -1);
+            
+            // Draw a green box around kept characters in the debug overlay
+            cv.rectangle(
+              debugMat,
+              new cv.Point(rect.x, rect.y),
+              new cv.Point(rect.x + rect.width, rect.y + rect.height),
+              new cv.Scalar(0, 255, 0, 255),
+              2
+            );
           } else {
+            // Draw a red box around removed noise in the debug overlay
+            cv.rectangle(
+              debugMat,
+              new cv.Point(rect.x, rect.y),
+              new cv.Point(rect.x + rect.width, rect.y + rect.height),
+              new cv.Scalar(255, 0, 0, 255),
+              2
+            );
             removedCount++;
           }
-          contour.delete(); // VERY IMPORTANT: contours.get() returns a new Mat wrapper
+          contour.delete();
         }
 
-        // Invert back to Black text on White background for Tesseract
-        filteredMat = m(new cv.Mat());
-        cv.bitwise_not(goodContoursMat, filteredMat);
-        
+        filteredMat = goodContoursMat;
         SRMLogger.debug('Preprocessor', `Contours removed: ${removedCount}`);
       }
       timingMs.contours = Math.round(performance.now() - t);
       this._saveStage(stages, 'contours', this._matToCanvas(filteredMat));
+      this._saveStage(stages, 'contours_debug', this._matToCanvas(debugMat));
 
-      // ── STAGE 6: Morphology & Thinning ──────────────────────────────────────
+      // ── STAGE 7: Morphology OPEN ────────────────────────────────────────────
       t = performance.now();
       let processedMat = filteredMat;
       
-      // Thinning (Dilation)
-      if (PREPROCESSING_CONFIG.thinKernelSize > 1) {
-        const thinnedMat = m(new cv.Mat());
-        const tk = m(cv.Mat.ones(PREPROCESSING_CONFIG.thinKernelSize, PREPROCESSING_CONFIG.thinKernelSize, cv.CV_8U));
-        cv.dilate(processedMat, thinnedMat, tk);
-        processedMat = thinnedMat;
-        this._saveStage(stages, 'thinned', this._matToCanvas(processedMat));
-      }
-
-      // Closing
       if (PREPROCESSING_CONFIG.morphKernelSize > 1) {
-        const closedMat = m(new cv.Mat());
-        const mk = m(cv.Mat.ones(PREPROCESSING_CONFIG.morphKernelSize, PREPROCESSING_CONFIG.morphKernelSize, cv.CV_8U));
-        cv.morphologyEx(processedMat, closedMat, cv.MORPH_CLOSE, mk);
-        processedMat = closedMat;
+        const openedMat = m(new cv.Mat());
+        const morphKernel = m(cv.getStructuringElement(
+          cv.MORPH_RECT,
+          new cv.Size(PREPROCESSING_CONFIG.morphKernelSize, PREPROCESSING_CONFIG.morphKernelSize)
+        ));
+        cv.morphologyEx(filteredMat, openedMat, cv.MORPH_OPEN, morphKernel);
+        processedMat = openedMat;
         this._saveStage(stages, 'morphology', this._matToCanvas(processedMat));
       }
       timingMs.morphology = Math.round(performance.now() - t);
 
-      // ── STAGE 7: Upscale & Sharpen ──────────────────────────────────────────
+      // ── STAGE 8: Border Padding ─────────────────────────────────────────────
       t = performance.now();
-      const upscaledMat = m(new cv.Mat());
-      const newSize = new cv.Size(
-        processedMat.cols * PREPROCESSING_CONFIG.upscaleFactor,
-        processedMat.rows * PREPROCESSING_CONFIG.upscaleFactor
+      const paddedMat = m(new cv.Mat());
+      cv.copyMakeBorder(
+        processedMat,
+        paddedMat,
+        20, 20, 20, 20, // top, bottom, left, right
+        cv.BORDER_CONSTANT,
+        new cv.Scalar(0, 0, 0, 255) // black border since background is black now
       );
-      cv.resize(processedMat, upscaledMat, newSize, 0, 0, cv.INTER_CUBIC);
+      processedMat = paddedMat;
+      timingMs.padding = Math.round(performance.now() - t);
 
-      let finalMat = upscaledMat;
+      // ── STAGE 9: Sharpen & Invert back ──────────────────────────────────────
+      t = performance.now();
+      let finalMat = processedMat;
+      
       if (PREPROCESSING_CONFIG.sharpen) {
-        // Unsharp Mask: original*(1.5) - blurred*(0.5)
         const blurredUp = m(new cv.Mat());
-        cv.GaussianBlur(upscaledMat, blurredUp, new cv.Size(0, 0), 3);
+        cv.GaussianBlur(processedMat, blurredUp, new cv.Size(0, 0), 3);
         finalMat = m(new cv.Mat());
-        cv.addWeighted(upscaledMat, 1.5, blurredUp, -0.5, 0, finalMat);
+        cv.addWeighted(processedMat, 2.0, blurredUp, -1.0, 0, finalMat);
       }
-      timingMs.upscale = Math.round(performance.now() - t);
+
+      // Invert back to Black text on White background for Tesseract OCR
+      const invertedFinal = m(new cv.Mat());
+      cv.bitwise_not(finalMat, invertedFinal);
+      finalMat = invertedFinal;
+
+      timingMs.sharpen = Math.round(performance.now() - t);
       this._saveStage(stages, 'final', this._matToCanvas(finalMat));
 
       // ── EXPORT ──────────────────────────────────────────────────────────────
-      const processedBase64 = stages.final; // already converted
+      const processedBase64 = stages.final; 
       const totalTime = Math.round(performance.now() - pipelineStart);
 
       return {
         processedBase64,
         originalBase64: base64PNG,
-        dimensions: { width: newSize.width, height: newSize.height },
+        dimensions: { width: finalMat.cols, height: finalMat.rows },
         stages,
         timingMs,
         totalTimeMs: totalTime,
@@ -269,7 +314,7 @@ const SRMPreprocessor = {
   configure(options = {}) {
     Object.assign(PREPROCESSING_CONFIG, options);
     // Ensure odd numbers for kernels
-    ['medianBlurKernel', 'adaptiveBlockSize'].forEach(k => {
+    ['adaptiveBlockSize'].forEach(k => {
       if (PREPROCESSING_CONFIG[k] !== undefined && PREPROCESSING_CONFIG[k] % 2 === 0) {
         PREPROCESSING_CONFIG[k] += 1;
       }

@@ -4,90 +4,43 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SRM CAPTCHA Solver — Advanced Test Runner</title>
-
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
   <style>
-    :root {
-      --bg:        #0d1117;
-      --surface:   #161b22;
-      --elevated:  #1c2333;
-      --border:    #30363d;
-      --accent:    #6366f1;
-      --cyan:      #06b6d4;
-      --green:     #22c55e;
-      --yellow:    #f59e0b;
-      --red:       #ef4444;
-      --text:      #e6edf3;
-      --muted:     #8b949e;
-      --dimmed:    #484f58;
-    }
+    :root { --bg: #0d1117; --surface: #161b22; --elevated: #1c2333; --border: #30363d; --accent: #6366f1; --green: #22c55e; --yellow: #f59e0b; --red: #ef4444; --text: #e6edf3; --muted: #8b949e; --dimmed: #484f58; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; -webkit-font-smoothing: antialiased; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; }
     h1 { font-size: 22px; font-weight: 700; color: var(--text); }
     h2 { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
-    p  { color: var(--muted); font-size: 13px; line-height: 1.6; }
     .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .page-header .logo { width: 40px; height: 40px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
     .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
     .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
     .drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.2s ease; margin-bottom: 16px; background: var(--elevated); }
-    .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: rgba(99,102,241,0.06); }
+    .drop-zone:hover { border-color: var(--accent); background: rgba(99,102,241,0.06); }
     .drop-zone-icon { font-size: 36px; margin-bottom: 8px; }
-    .drop-zone-text { font-size: 13px; color: var(--muted); line-height: 1.5; }
-    .drop-zone-text strong { color: var(--accent); }
+    .drop-zone-text { font-size: 13px; color: var(--muted); }
     #fileInput { display: none; }
     #inputPreview { display: none; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 16px; }
     #inputImg { max-width: 100%; max-height: 120px; border: 1px solid var(--border); border-radius: 8px; image-rendering: pixelated; }
-    .input-meta { font-size: 11px; color: var(--dimmed); font-family: 'JetBrains Mono', monospace; }
     .settings-grid { display: grid; gap: 14px; }
-    .setting-item label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
-    .setting-item input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .setting-item label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
     .range-row { display: flex; align-items: center; gap: 10px; }
-    .range-row input[type="range"] { flex: 1; }
-    .range-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); min-width: 32px; text-align: right; font-weight: 600; }
-    .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-    .btn-run { width: 100%; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .btn-run:hover { background: #4f46e5; box-shadow: 0 0 20px rgba(99,102,241,0.4); }
-    .btn-run:disabled { background: var(--elevated); color: var(--dimmed); cursor: not-allowed; box-shadow: none; }
+    .range-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .range-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); font-weight: 600; min-width: 32px; text-align: right; }
+    .btn-run { width: 100%; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+    .btn-run:disabled { background: var(--elevated); color: var(--dimmed); cursor: not-allowed; }
     .result-summary { display: none; background: var(--elevated); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-top: 16px; }
     .result-summary.visible { display: block; }
-    .result-text { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 500; letter-spacing: 0.2em; color: var(--accent); margin-bottom: 8px; }
-    .result-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
-    .result-meta-item { display: flex; flex-direction: column; gap: 2px; }
-    .result-meta-item .label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dimmed); }
-    .result-meta-item .value { font-size: 13px; font-weight: 600; color: var(--text); }
-    .confidence-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; }
-    .confidence-pill.high { background: rgba(34,197,94,0.15); color: var(--green); }
-    .confidence-pill.medium { background: rgba(245,158,11,0.15); color: var(--yellow); }
-    .confidence-pill.low { background: rgba(239,68,68,0.15); color: var(--red); }
+    .result-text { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 500; color: var(--accent); letter-spacing: 0.2em; margin-bottom: 8px; }
     .stages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
-    .stage-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s; }
-    .stage-card:hover { border-color: var(--accent); }
-    .stage-header { padding: 8px 12px; background: var(--elevated); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .stage-name { font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: 0.04em; }
-    .stage-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dimmed); }
-    .stage-img-wrap { display: flex; align-items: center; justify-content: center; padding: 12px; min-height: 80px; background: #000; }
-    .stage-img { max-width: 100%; max-height: 100px; image-rendering: pixelated; border-radius: 4px; }
-    .stage-placeholder { color: var(--dimmed); font-size: 11px; text-align: center; }
+    .stage-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .stage-header { padding: 8px 12px; background: var(--elevated); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; }
+    .stage-img-wrap { padding: 12px; background: #000; display: flex; justify-content: center; min-height: 80px; }
+    .stage-img { max-width: 100%; max-height: 100px; image-rendering: pixelated; }
     #logPanel { margin-top: 16px; background: var(--elevated); border: 1px solid var(--border); border-radius: 10px; max-height: 200px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-    .log-line { padding: 3px 12px; border-bottom: 1px solid var(--border); color: var(--muted); line-height: 1.5; }
-    .log-line:last-child { border-bottom: none; }
-    .log-line.info { color: #60a5fa; }
-    .log-line.error { color: var(--red); }
-    .log-line.debug { color: var(--dimmed); }
-    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .status-bar { padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; margin-top: 12px; display: none; }
-    .status-bar.info { background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); display: block; }
-    .status-bar.success { background: rgba(34,197,94,0.1); color: var(--green); border: 1px solid rgba(34,197,94,0.2); display: block; }
-    .status-bar.error { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); display: block; }
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .log-line { padding: 3px 12px; border-bottom: 1px solid var(--border); color: var(--muted); }
   </style>
 </head>
 <body>
@@ -96,317 +49,252 @@
   <div class="logo">🔬</div>
   <div><h1>Advanced CAPTCHA Test Runner</h1></div>
 </div>
-<p class="subtitle">Offline Advanced Preprocessing (CLAHE, Adaptive Threshold, Contours) & OCR tester.</p>
+<p class="subtitle">Offline Advanced Preprocessing & OCR tester.</p>
 
 <div class="layout">
-  <!-- ══ LEFT PANEL: Controls ══ -->
   <div class="left-panel">
     <div class="card">
       <h2>📁 Input Image</h2>
       <div class="drop-zone" id="dropZone">
         <div class="drop-zone-icon">🖼️</div>
-        <div class="drop-zone-text"><strong>Drag & drop</strong> a CAPTCHA here<br/>or <strong>click to browse</strong></div>
+        <div class="drop-zone-text"><strong>Drag & drop</strong> a CAPTCHA here</div>
       </div>
       <input type="file" id="fileInput" accept="image/*" />
       <div id="inputPreview">
-        <img id="inputImg" alt="Input CAPTCHA" />
-        <div class="input-meta" id="inputMeta"></div>
+        <img id="inputImg" />
       </div>
     </div>
 
     <div class="card">
-      <h2>⚙️ Preprocessing (Advanced)</h2>
+      <h2>⚙️ Preprocessing Options</h2>
       <div class="settings-grid">
-        <div class="setting-item">
-          <label>Median Blur (Denoise)</label>
-          <div class="range-row"><input type="range" id="medianBlurKernel" min="1" max="5" step="2" value="3" /><span class="range-val" id="medianBlurKernelVal">3</span></div>
-        </div>
         <div class="setting-item">
           <label>Adaptive Threshold Block Size</label>
           <div class="range-row"><input type="range" id="adaptiveBlockSize" min="3" max="51" step="2" value="15" /><span class="range-val" id="adaptiveBlockSizeVal">15</span></div>
         </div>
         <div class="setting-item">
-          <label>Adaptive Threshold C (Constant)</label>
+          <label>Adaptive Threshold C</label>
           <div class="range-row"><input type="range" id="adaptiveC" min="0" max="30" step="1" value="10" /><span class="range-val" id="adaptiveCVal">10</span></div>
         </div>
         <div class="setting-item">
-          <label>Min Contour Area (Remove Dust)</label>
-          <div class="range-row"><input type="range" id="minContourArea" min="0" max="100" step="1" value="10" /><span class="range-val" id="minContourAreaVal">10</span></div>
+          <label>Min Contour Area</label>
+          <div class="range-row"><input type="range" id="minContourArea" min="0" max="100" step="1" value="12" /><span class="range-val" id="minContourAreaVal">12</span></div>
         </div>
         <div class="setting-item">
-          <label>Max Contour Area (Remove Blocks)</label>
-          <div class="range-row"><input type="range" id="maxContourArea" min="500" max="5000" step="100" value="2000" /><span class="range-val" id="maxContourAreaVal">2000</span></div>
+          <label>Max Contour Area</label>
+          <div class="range-row"><input type="range" id="maxContourArea" min="500" max="5000" step="100" value="1500" /><span class="range-val" id="maxContourAreaVal">1500</span></div>
         </div>
         <div class="setting-item">
-          <label>Thinning Kernel</label>
-          <div class="range-row"><input type="range" id="thinKernel" min="1" max="5" step="1" value="1" /><span class="range-val" id="thinKernelVal">1</span></div>
-        </div>
-        <div class="setting-item">
-          <label>Morphology Close Kernel</label>
+          <label>Morphology Open Kernel</label>
           <div class="range-row"><input type="range" id="morphKernel" min="1" max="5" step="1" value="2" /><span class="range-val" id="morphKernelVal">2</span></div>
         </div>
         <div class="setting-item">
           <label>Upscale Factor</label>
-          <div class="range-row"><input type="range" id="upscaleFactor" min="1" max="5" step="1" value="3" /><span class="range-val" id="upscaleFactorVal">3×</span></div>
-        </div>
-        <div class="setting-item">
-          <label>Options</label>
-          <div class="checkbox-row"><input type="checkbox" id="chkCLAHE" checked /><span>Use CLAHE (Contrast)</span></div>
-          <div class="checkbox-row" style="margin-top:6px"><input type="checkbox" id="chkSharpen" checked /><span>Unsharp Mask (Sharpen)</span></div>
+          <div class="range-row"><input type="range" id="upscaleFactor" min="1" max="5" step="1" value="4" /><span class="range-val" id="upscaleFactorVal">4×</span></div>
         </div>
       </div>
     </div>
 
     <button class="btn-run" id="btnRun" disabled>🚀 Run Advanced Pipeline</button>
-    <div class="status-bar" id="statusBar"></div>
 
     <div class="result-summary" id="resultSummary">
-      <p style="font-size:10px;color:var(--dimmed);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">OCR Result</p>
+      <p style="font-size:10px;color:var(--dimmed);font-weight:700;margin-bottom:6px;">OCR Result</p>
       <div class="result-text" id="resultText">—</div>
-      <div class="result-meta">
-        <div class="result-meta-item"><span class="label">Confidence</span><span class="value" id="resultConfidence">—</span></div>
-        <div class="result-meta-item"><span class="label">Preprocess</span><span class="value" id="resultPrepTime">—</span></div>
-        <div class="result-meta-item"><span class="label">OCR Time</span><span class="value" id="resultOcrTime">—</span></div>
-      </div>
+      <div style="font-size:13px; color:var(--text);">Confidence: <strong id="resultConfidence" style="color:var(--green)">—</strong>%</div>
     </div>
   </div>
 
-  <!-- ══ RIGHT PANEL ══ -->
   <div class="right-panel">
     <div class="card">
       <h2>🔬 Advanced Stages</h2>
       <div class="stages-grid" id="stagesGrid">
-        <div class="stage-placeholder" style="grid-column:1/-1;padding:40px;">Run pipeline to see stages</div>
+        <div style="padding:40px; color:var(--dimmed); text-align:center;">Run pipeline to see stages</div>
       </div>
     </div>
     <div class="card">
       <h2>📋 Logs</h2>
-      <div id="logPanel"><div class="log-line debug">Waiting for image…</div></div>
+      <div id="logPanel"><div class="log-line">Waiting for image…</div></div>
     </div>
   </div>
 </div>
 
 <script>
   window.Module = {};
-  function onOpenCvReady() {
-    window._opencvReady = true;
-    log('OpenCV.js loaded ✓', 'info');
-    checkReady();
-  }
+  function onOpenCvReady() { window._opencvReady = true; log('OpenCV.js loaded ✓'); checkReady(); }
 </script>
 <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady()"></script>
 <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
 'use strict';
-
 let inputImageBase64 = null;
 let tesseractWorker = null;
 
 function checkReady() {
   if (typeof cv !== 'undefined' && cv.Mat && typeof Tesseract !== 'undefined') {
-    setStatus('info', '✅ Libraries loaded. Drop an image to start.');
     document.getElementById('btnRun').disabled = !inputImageBase64;
   }
 }
 
-// ── Drop Zone ──
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if(f) loadFile(f); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
+dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = 'var(--border)');
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--border)'; if(e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener('change', () => { if(fileInput.files[0]) loadFile(fileInput.files[0]); });
 
 function loadFile(file) {
-  if (!file.type.startsWith('image/')) return setStatus('error', '❌ Must be image');
-  const reader = new FileReader();
-  reader.onload = (e) => {
+  const r = new FileReader();
+  r.onload = e => {
     inputImageBase64 = e.target.result;
-    const img = document.getElementById('inputImg');
-    img.src = inputImageBase64;
-    img.onload = () => document.getElementById('inputMeta').textContent = `${img.naturalWidth}×${img.naturalHeight}px`;
+    document.getElementById('inputImg').src = inputImageBase64;
     document.getElementById('inputPreview').style.display = 'flex';
     document.getElementById('btnRun').disabled = false;
-    setStatus('info', `✅ Image loaded: ${file.name}`);
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(file);
 }
 
-// ── Sliders ──
-function bindSlider(id, suffix = '') {
-  const slider = document.getElementById(id);
-  const display = document.getElementById(id + 'Val');
-  display.textContent = slider.value + suffix;
-  slider.addEventListener('input', () => display.textContent = slider.value + suffix);
+function bindSlider(id, suf='') {
+  const s = document.getElementById(id), d = document.getElementById(id+'Val');
+  d.textContent = s.value + suf;
+  s.addEventListener('input', () => d.textContent = s.value + suf);
 }
-['medianBlurKernel', 'adaptiveBlockSize', 'adaptiveC', 'minContourArea', 'maxContourArea', 'thinKernel', 'morphKernel'].forEach(id => bindSlider(id));
+['adaptiveBlockSize', 'adaptiveC', 'minContourArea', 'maxContourArea', 'morphKernel'].forEach(i => bindSlider(i));
 bindSlider('upscaleFactor', '×');
 
-// ── Run Pipeline ──
 document.getElementById('btnRun').addEventListener('click', async () => {
   if (!inputImageBase64) return;
-  const btn = document.getElementById('btnRun');
-  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Running…';
+  document.getElementById('btnRun').disabled = true;
   document.getElementById('logPanel').innerHTML = '';
-  document.getElementById('resultSummary').classList.remove('visible');
-
+  
   try {
-    log('── PREPROCESSING ──', 'info');
-    const tPrep = performance.now();
     const prepResult = await runPreprocessing(inputImageBase64);
-    const prepTime = Math.round(performance.now() - tPrep);
-
-    log('── OCR ──', 'info');
-    const tOcr = performance.now();
     const ocrResult = await runOCR(prepResult.processedBase64);
-    const ocrTime = Math.round(performance.now() - tOcr);
-
-    renderStages(prepResult.stages, prepResult.timingMs);
-    renderResult(ocrResult, prepTime, ocrTime);
-    setStatus('success', `✅ Done! OCR: "${ocrResult.text}" (${ocrResult.confidence}%)`);
+    
+    renderStages(prepResult.stages);
+    document.getElementById('resultText').textContent = ocrResult.text;
+    document.getElementById('resultConfidence').textContent = ocrResult.confidence;
+    document.getElementById('resultSummary').classList.add('visible');
   } catch (err) {
-    log(`ERROR: ${err.message}`, 'error');
-    setStatus('error', `❌ Pipeline failed: ${err.message}`);
+    log(`ERROR: ${err.message}`);
   } finally {
-    btn.disabled = false; btn.innerHTML = '🚀 Run Advanced Pipeline';
+    document.getElementById('btnRun').disabled = false;
   }
 });
 
-// ── Preprocessing ──
-async function runPreprocessing(base64PNG) {
+async function runPreprocessing(b64) {
   const getInt = id => parseInt(document.getElementById(id).value);
   const cfg = {
-    useCLAHE: document.getElementById('chkCLAHE').checked,
-    medianBlurKernel: getInt('medianBlurKernel'),
+    upscaleFactor: getInt('upscaleFactor'),
     adaptiveBlockSize: getInt('adaptiveBlockSize'),
     adaptiveC: getInt('adaptiveC'),
     minContourArea: getInt('minContourArea'),
     maxContourArea: getInt('maxContourArea'),
-    thinKernelSize: getInt('thinKernel'),
-    morphKernelSize: getInt('morphKernel'),
-    upscaleFactor: getInt('upscaleFactor'),
-    sharpen: document.getElementById('chkSharpen').checked
+    morphKernelSize: getInt('morphKernel')
   };
-
-  const timingMs = {}; const stages = {}; const mats = [];
+  const stages = {}; const mats = [];
   const m = mat => { mats.push(mat); return mat; };
 
   try {
-    let t = performance.now();
     const { canvas } = await new Promise(r => {
       const img = new Image();
-      img.onload = () => {
-        const c = document.createElement('canvas');
-        c.width = img.width; c.height = img.height;
-        c.getContext('2d').drawImage(img, 0, 0);
-        r({ canvas: c });
-      };
-      img.src = base64PNG;
+      img.onload = () => { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').drawImage(img, 0, 0); r({ canvas: c }); };
+      img.src = b64;
     });
     const srcMat = m(cv.imread(canvas));
-    stages.original = base64PNG;
+    stages.original = b64;
 
-    // 2. Grayscale & CLAHE
-    t = performance.now();
+    // 2. Upscale FIRST
+    const upscaledSrc = m(new cv.Mat());
+    cv.resize(srcMat, upscaledSrc, new cv.Size(srcMat.cols * cfg.upscaleFactor, srcMat.rows * cfg.upscaleFactor), 0, 0, cv.INTER_CUBIC);
+    stages.upscaled = matToBase64(upscaledSrc);
+
+    // 3. Grayscale & CLAHE
     const grayMat = m(new cv.Mat());
-    cv.cvtColor(srcMat, grayMat, cv.COLOR_RGBA2GRAY);
-    let contrastMat = grayMat;
-    if (cfg.useCLAHE) {
-      contrastMat = m(new cv.Mat());
-      const clahe = m(new cv.CLAHE(2.0, new cv.Size(8,8)));
-      clahe.apply(grayMat, contrastMat);
-    }
+    cv.cvtColor(upscaledSrc, grayMat, cv.COLOR_RGBA2GRAY);
+    const contrastMat = m(new cv.Mat());
+    const clahe = m(new cv.CLAHE(2.0, new cv.Size(8,8)));
+    clahe.apply(grayMat, contrastMat);
     stages.contrast = matToBase64(contrastMat);
-    timingMs.contrast = ms(t);
 
-    // 3. Median Blur
-    t = performance.now();
-    let blurMat = contrastMat;
-    if (cfg.medianBlurKernel > 1) {
-      blurMat = m(new cv.Mat());
-      cv.medianBlur(contrastMat, blurMat, cfg.medianBlurKernel);
-    }
+    // 4. Gaussian Blur
+    const blurMat = m(new cv.Mat());
+    cv.GaussianBlur(contrastMat, blurMat, new cv.Size(3, 3), 0);
     stages.blurred = matToBase64(blurMat);
-    timingMs.blur = ms(t);
 
-    // 4. Adaptive Threshold
-    t = performance.now();
+    // 5. Adaptive Thresh INV
     const binaryMat = m(new cv.Mat());
-    cv.adaptiveThreshold(blurMat, binaryMat, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, cfg.adaptiveBlockSize, cfg.adaptiveC);
+    cv.adaptiveThreshold(blurMat, binaryMat, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, cfg.adaptiveBlockSize, cfg.adaptiveC);
     stages.binary = matToBase64(binaryMat);
-    timingMs.threshold = ms(t);
 
-    // 5. Contour Filtering
-    t = performance.now();
-    let filteredMat = binaryMat;
-    const invertedMat = m(new cv.Mat());
-    cv.bitwise_not(binaryMat, invertedMat);
-    
+    // 6. Contours (Aspect Ratio + Size)
+    const debugMat = m(new cv.Mat());
+    cv.cvtColor(binaryMat, debugMat, cv.COLOR_GRAY2RGBA);
+
     const contours = m(new cv.MatVector());
     const hierarchy = m(new cv.Mat());
-    cv.findContours(invertedMat, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    cv.findContours(binaryMat, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
     
-    const goodContoursMat = m(cv.Mat.zeros(invertedMat.rows, invertedMat.cols, cv.CV_8UC1));
-    let removed = 0;
+    const goodContoursMat = m(cv.Mat.zeros(binaryMat.rows, binaryMat.cols, cv.CV_8UC1));
     for (let i = 0; i < contours.size(); ++i) {
       const contour = contours.get(i);
       const area = cv.contourArea(contour);
-      if (area >= cfg.minContourArea && area <= cfg.maxContourArea) {
-        cv.drawContours(goodContoursMat, contours, i, new cv.Scalar(255), -1, cv.LINE_8, hierarchy, 0);
-      } else { removed++; }
+      const rect = cv.boundingRect(contour);
+      const width = rect.width;
+      const height = rect.height;
+      const aspectRatio = width / height;
+
+      const isThinHorizontal = aspectRatio > 5;
+      const isThinVertical = aspectRatio < 0.2;
+      const isTinyNoise = area < cfg.minContourArea;
+      const isHugeBlob = area > cfg.maxContourArea;
+
+      if (!(isThinHorizontal || isThinVertical || isTinyNoise || isHugeBlob)) {
+        cv.drawContours(goodContoursMat, contours, i, new cv.Scalar(255), -1);
+        cv.rectangle(debugMat, new cv.Point(rect.x, rect.y), new cv.Point(rect.x + rect.width, rect.y + rect.height), new cv.Scalar(0, 255, 0, 255), 2);
+      } else {
+        cv.rectangle(debugMat, new cv.Point(rect.x, rect.y), new cv.Point(rect.x + rect.width, rect.y + rect.height), new cv.Scalar(255, 0, 0, 255), 2);
+      }
       contour.delete();
     }
-    filteredMat = m(new cv.Mat());
-    cv.bitwise_not(goodContoursMat, filteredMat);
-    log(`Removed ${removed} bad contours (noise/blocks)`, 'debug');
-    stages.contours = matToBase64(filteredMat);
-    timingMs.contours = ms(t);
+    stages.contours = matToBase64(goodContoursMat);
+    stages.contoursDebug = matToBase64(debugMat);
 
-    // 6. Thin & Morph
-    t = performance.now();
-    let processedMat = filteredMat;
-    if (cfg.thinKernelSize > 1) {
-      const thinnedMat = m(new cv.Mat());
-      const tk = m(cv.Mat.ones(cfg.thinKernelSize, cfg.thinKernelSize, cv.CV_8U));
-      cv.dilate(processedMat, thinnedMat, tk);
-      processedMat = thinnedMat;
-      stages.thinned = matToBase64(processedMat);
-    }
+    // 7. Morph Open
+    let processedMat = goodContoursMat;
     if (cfg.morphKernelSize > 1) {
-      const closedMat = m(new cv.Mat());
-      const mk = m(cv.Mat.ones(cfg.morphKernelSize, cfg.morphKernelSize, cv.CV_8U));
-      cv.morphologyEx(processedMat, closedMat, cv.MORPH_CLOSE, mk);
-      processedMat = closedMat;
+      const openedMat = m(new cv.Mat());
+      const morphKernel = m(cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(cfg.morphKernelSize, cfg.morphKernelSize)));
+      cv.morphologyEx(goodContoursMat, openedMat, cv.MORPH_OPEN, morphKernel);
+      processedMat = openedMat;
       stages.morphology = matToBase64(processedMat);
     }
-    timingMs.morphology = ms(t);
 
-    // 7. Upscale & Sharpen
-    t = performance.now();
-    const upscaledMat = m(new cv.Mat());
-    cv.resize(processedMat, upscaledMat, new cv.Size(processedMat.cols * cfg.upscaleFactor, processedMat.rows * cfg.upscaleFactor), 0, 0, cv.INTER_CUBIC);
-    let finalMat = upscaledMat;
-    if (cfg.sharpen) {
-      const blurredUp = m(new cv.Mat());
-      cv.GaussianBlur(upscaledMat, blurredUp, new cv.Size(0,0), 3);
-      finalMat = m(new cv.Mat());
-      cv.addWeighted(upscaledMat, 1.5, blurredUp, -0.5, 0, finalMat);
-    }
-    stages.final = matToBase64(finalMat);
-    timingMs.upscale = ms(t);
+    // 8. Padding
+    const paddedMat = m(new cv.Mat());
+    cv.copyMakeBorder(processedMat, paddedMat, 20, 20, 20, 20, cv.BORDER_CONSTANT, new cv.Scalar(0, 0, 0, 255));
+    processedMat = paddedMat;
+    
+    // 9. Sharpen
+    const blurredUp = m(new cv.Mat());
+    cv.GaussianBlur(processedMat, blurredUp, new cv.Size(0,0), 3);
+    const finalMat = m(new cv.Mat());
+    cv.addWeighted(processedMat, 2.0, blurredUp, -1.0, 0, finalMat);
 
-    return { processedBase64: stages.final, stages, timingMs };
+    // Invert back to white background
+    const inv = m(new cv.Mat());
+    cv.bitwise_not(finalMat, inv);
+    stages.final = matToBase64(inv);
+
+    return { processedBase64: stages.final, stages };
   } finally {
     mats.forEach(m => { try { if (!m.isDeleted()) m.delete(); } catch {} });
   }
 }
 
-// ── OCR ──
-async function runOCR(imageBase64) {
+async function runOCR(b64) {
   if (!tesseractWorker) {
-    log('Init Tesseract (first run ~2s)…', 'info');
     tesseractWorker = await Tesseract.createWorker('eng', 1, {
       langPath: 'https://tessdata.projectnaptha.com/4.0.0',
       workerPath: 'https://unpkg.com/tesseract.js@5/dist/worker.min.js',
@@ -414,39 +302,26 @@ async function runOCR(imageBase64) {
     });
   }
   await tesseractWorker.setParameters({
-    tessedit_pageseg_mode: 8,
+    tessedit_pageseg_mode: 7,
     tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
     load_system_dawg: '0', load_freq_dawg: '0'
   });
-  const { data } = await tesseractWorker.recognize(imageBase64);
-  return { text: (data.text || '').replace(/[^A-Za-z0-9]/g, '').trim(), confidence: Math.round(data.confidence) };
+  const { data } = await tesseractWorker.recognize(b64);
+  let cleaned = (data.text || '').replace(/[^A-Za-z0-9]/g, '').trim().replace(/\s+/g, '');
+  if (cleaned.length > 6) cleaned = cleaned.slice(0, 6);
+  return { text: cleaned, confidence: Math.round(data.confidence) };
 }
 
-// ── Render ──
-const STAGE_NAMES = { original: '1. Original', contrast: '2. CLAHE Contrast', blurred: '3. Median Blur', binary: '4. Adaptive Thresh', contours: '5. Contour Filter', thinned: '6. Thinning', morphology: '7. Morphology', final: '8. Scaled & Sharpened' };
-function renderStages(stages, timingMs) {
-  const grid = document.getElementById('stagesGrid'); grid.innerHTML = '';
-  for (const [key, label] of Object.entries(STAGE_NAMES)) {
-    if (!stages[key]) continue;
-    const time = timingMs[key] || timingMs[key.replace('contrast', 'contrast')] || '';
-    const div = document.createElement('div'); div.className = 'stage-card';
-    if (key === 'final') div.style.border = '2px solid var(--accent)';
-    div.innerHTML = `<div class="stage-header"><span class="stage-name">${label}</span><span class="stage-time">${time}ms</span></div><div class="stage-img-wrap"><img class="stage-img" src="${stages[key]}" /></div>`;
-    grid.appendChild(div);
+const STAGE_NAMES = { original: '1. Original', upscaled: '2. Upscaled', contrast: '3. CLAHE', blurred: '4. Gaussian', binary: '5. Thresh INV', contoursDebug: '6. Contour Filter', morphology: '7. Morph Open', final: '8. Padded/Sharpened' };
+function renderStages(stages) {
+  const g = document.getElementById('stagesGrid'); g.innerHTML = '';
+  for (const [k, l] of Object.entries(STAGE_NAMES)) {
+    if (!stages[k]) continue;
+    g.innerHTML += `<div class="stage-card"><div class="stage-header">${l}</div><div class="stage-img-wrap"><img class="stage-img" src="${stages[k]}" /></div></div>`;
   }
 }
-function renderResult(ocrResult, prepTime, ocrTime) {
-  document.getElementById('resultText').textContent = ocrResult.text || '(empty)';
-  document.getElementById('resultPrepTime').textContent = `${prepTime}ms`;
-  document.getElementById('resultOcrTime').textContent = `${ocrTime}ms`;
-  const c = ocrResult.confidence;
-  document.getElementById('resultConfidence').innerHTML = `<span class="confidence-pill ${c>=80?'high':c>=50?'medium':'low'}">${c}%</span>`;
-  document.getElementById('resultSummary').classList.add('visible');
-}
-function ms(t) { return Math.round(performance.now() - t); }
 function matToBase64(mat) { const c = document.createElement('canvas'); c.width = mat.cols; c.height = mat.rows; cv.imshow(c, mat); return c.toDataURL('image/png'); }
-function log(msg, lvl = 'debug') { const p = document.getElementById('logPanel'); const l = document.createElement('div'); l.className = `log-line ${lvl}`; l.textContent = msg; p.appendChild(l); p.scrollTop = p.scrollHeight; }
-function setStatus(t, m) { const b = document.getElementById('statusBar'); b.className = `status-bar ${t}`; b.textContent = m; }
+function log(msg) { const p = document.getElementById('logPanel'); p.innerHTML += `<div class="log-line">${msg}</div>`; p.scrollTop = p.scrollHeight; }
 
 setTimeout(checkReady, 1000);
 </script>
