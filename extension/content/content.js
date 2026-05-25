@@ -266,23 +266,52 @@ async function runPipeline(attempt = 1) {
     SRMLogger.info('Content', 'Step 1: Capturing CAPTCHA image...');
     const captureResult = await SRMImageCapture.capture(elements.captchaImg);
 
-    // ── Step 2: Preprocess image ──────────────────────────────────────────────
-    SRMLogger.info('Content', 'Step 2: Preprocessing image (OpenCV.js)...');
-    const preprocessResult = await SRMPreprocessor.process(captureResult.base64PNG);
+    // ── Step 2 & 3: Multi-Pass Preprocessing & OCR ────────────────────────────
+    SRMLogger.info('Content', 'Step 2 & 3: Running Multi-Pass OCR...');
+    
+    // We try 3 different preprocessing strategies and pick the one with the highest confidence.
+    // This allows us to handle varying CAPTCHA distortion styles automatically.
+    const strategies = [
+      { name: 'Standard', config: { blurKernelSize: 3, thinKernelSize: 1, morphKernelSize: 2 } },
+      { name: 'Thinned',  config: { blurKernelSize: 1, thinKernelSize: 2, morphKernelSize: 1 } },
+      { name: 'Bolded',   config: { blurKernelSize: 5, thinKernelSize: 1, morphKernelSize: 3 } }
+    ];
 
-    // Save images to storage so popup can preview them
+    let bestResult = null;
+
+    for (const strategy of strategies) {
+      SRMLogger.debug('Content', `Trying OCR Strategy: ${strategy.name}`);
+      
+      // Configure preprocessor for this strategy
+      SRMPreprocessor.configure(strategy.config);
+      
+      const preprocessResult = await SRMPreprocessor.process(captureResult.base64PNG);
+      const ocrResult = await SRMOCREngine.solve(preprocessResult.processedBase64);
+      
+      if (!bestResult || ocrResult.confidence > bestResult.confidence) {
+        bestResult = { 
+          ...ocrResult, 
+          preprocessResult, 
+          strategyName: strategy.name 
+        };
+      }
+      
+      // Early exit if we get a very high confidence score to save time
+      if (bestResult.confidence >= 85) {
+        SRMLogger.debug('Content', `Strategy ${strategy.name} achieved ${bestResult.confidence}% confidence. Stopping early.`);
+        break;
+      }
+    }
+
+    const { text, confidence, preprocessResult, strategyName } = bestResult;
+
+    // Save images from the BEST strategy to storage so popup can preview them
     await SRMStorage.saveCaptchaImages(
       captureResult.base64PNG,
       preprocessResult.processedBase64
     );
 
-    // ── Step 3: OCR ───────────────────────────────────────────────────────────
-    SRMLogger.info('Content', 'Step 3: Running OCR (Tesseract.js)...');
-    const ocrResult = await SRMOCREngine.solve(preprocessResult.processedBase64);
-
-    const { text, confidence } = ocrResult;
-
-    SRMLogger.info('Content', `OCR result: "${text}" (confidence: ${confidence}%)`);
+    SRMLogger.info('Content', `Winning Strategy: "${strategyName}". OCR result: "${text}" (confidence: ${confidence}%)`);
 
     // ── Step 4: Confidence check ──────────────────────────────────────────────
     if (confidence < settings.confidenceThreshold) {

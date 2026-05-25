@@ -56,6 +56,13 @@ const PREPROCESSING_CONFIG = {
   blurKernelSize: 3,
 
   /**
+   * CHARACTER THINNING (DILATION)
+   * Shaves pixels off the outside of characters to separate overlapping letters.
+   * 1 = Disabled. 2 or 3 = Enabled.
+   */
+  thinKernelSize: 1,
+
+  /**
    * MORPHOLOGY KERNEL SIZE
    * Controls the size of the structuring element for MORPH_CLOSE.
    *
@@ -292,6 +299,25 @@ const SRMPreprocessor = {
         SRMLogger.debug('Preprocessor', 'Line removal applied');
       }
 
+      // ── STAGE 4.5: Character Thinning ───────────────────────────────────────
+      // Shaves pixels off black text to separate overlapping letters.
+      let thinnedMat = lineRemovedMat;
+      if (PREPROCESSING_CONFIG.thinKernelSize > 1) {
+        t = performance.now();
+        thinnedMat = new cv.Mat();
+        matsToDelete.push(thinnedMat);
+        const tk = cv.Mat.ones(
+          PREPROCESSING_CONFIG.thinKernelSize,
+          PREPROCESSING_CONFIG.thinKernelSize,
+          cv.CV_8U
+        );
+        matsToDelete.push(tk);
+        cv.dilate(lineRemovedMat, thinnedMat, tk);
+        timingMs.thinning = Math.round(performance.now() - t);
+        SRMLogger.debug('Preprocessor', `Thinning applied (${timingMs.thinning}ms)`);
+        this._saveStage(stages, 'thinned', this._matToCanvas(thinnedMat));
+      }
+
       // ── STAGE 5: Morphological Closing ──────────────────────────────────────
       //
       // WHY: Noise lines drawn across the CAPTCHA can cut through character
@@ -326,7 +352,7 @@ const SRMPreprocessor = {
       );
       matsToDelete.push(morphKernel);
 
-      cv.morphologyEx(lineRemovedMat, closedMat, cv.MORPH_CLOSE, morphKernel);
+      cv.morphologyEx(thinnedMat, closedMat, cv.MORPH_CLOSE, morphKernel);
       timingMs.morphology = Math.round(performance.now() - t);
 
       SRMLogger.debug('Preprocessor', `Morphology done (${timingMs.morphology}ms, kernel=${PREPROCESSING_CONFIG.morphKernelSize}×${PREPROCESSING_CONFIG.morphKernelSize})`);
