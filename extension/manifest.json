@@ -29,7 +29,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://sp.srmist.edu.in/*"
+        "<all_urls>"
       ],
       "js": [
         "libs/opencv.js",
@@ -50,7 +50,7 @@
   ],
 
   "host_permissions": [
-    "https://sp.srmist.edu.in/*"
+    "<all_urls>"
   ],
 
   "permissions": [
@@ -67,7 +67,7 @@
         "popup/*"
       ],
       "matches": [
-        "https://sp.srmist.edu.in/*"
+        "<all_urls>"
       ]
     }
   ]

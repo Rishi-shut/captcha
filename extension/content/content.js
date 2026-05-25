@@ -162,13 +162,10 @@ async function init() {
  * @returns {boolean}
  */
 function isOnLoginPage() {
-  const path = window.location.pathname.toLowerCase();
-  const loginPaths = [
-    '/srmiststudentportal/students/loginmanager/youlogin.jsp',
-    '/srmiststudentportal/students/loginmanager/',
-    '/youlogin.jsp',
-  ];
-  return loginPaths.some(p => path.includes(p.toLowerCase()));
+  // Relaxed URL check: We now rely entirely on the DOM detector (captchaDetector.js)
+  // to figure out if we are on a login page by searching for the CAPTCHA image itself.
+  // This prevents URL mismatches (e.g. academia vs sp.srmist.edu) from breaking the script.
+  return true;
 }
 
 // ─── CAPTCHA Detection & Waiting ─────────────────────────────────────────────

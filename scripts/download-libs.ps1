@@ -120,9 +120,9 @@ $allGood = $true
 foreach ($file in $requiredFiles) {
   if (Test-Path $file) {
     $size = [math]::Round((Get-Item $file).Length / 1MB, 1)
-    Write-Host "  ✓ $file (${size}MB)" -ForegroundColor Green
+    Write-Host "  [OK] $file (${size}MB)" -ForegroundColor Green
   } else {
-    Write-Host "  ✗ $file  MISSING" -ForegroundColor Red
+    Write-Host "  [MISSING] $file" -ForegroundColor Red
     $allGood = $false
   }
 }

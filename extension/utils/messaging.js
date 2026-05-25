@@ -117,6 +117,7 @@ const SRMMessaging = {
   // ─── Message Type Constants ────────────────────────────────────────────────
   TYPES: {
     CAPTCHA_DETECTED:          'CAPTCHA_DETECTED',
+    IMAGES_READY:              'IMAGES_READY',
     CAPTCHA_SOLVED:            'CAPTCHA_SOLVED',
     CAPTCHA_FAILED:            'CAPTCHA_FAILED',
     GET_STATUS:                'GET_STATUS',

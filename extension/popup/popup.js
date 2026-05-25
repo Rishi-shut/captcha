@@ -297,10 +297,10 @@ async function renderLogs() {
   let logs = [];
 
   try {
-    const stored = await chromeGet('srmLogs', true); // session storage
+    const stored = await chromeGet('srmLogs', false); // local storage
     logs = stored?.srmLogs || [];
   } catch {
-    // session storage may not be available
+    // local storage may not be available
   }
 
   if (!logs || logs.length === 0) {

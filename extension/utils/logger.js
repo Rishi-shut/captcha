@@ -111,11 +111,11 @@ const SRMLogger = {
       logBuffer.shift(); // Remove oldest entry
     }
 
-    // Persist to chrome.storage.session if enabled (for popup to read)
+    // Persist to chrome.storage.local if enabled (for popup to read)
     if (persistLogs && typeof chrome !== 'undefined' && chrome.storage) {
       // Fire-and-forget — we don't block on storage write
-      chrome.storage.session.set({ srmLogs: [...logBuffer] }).catch(() => {
-        // Session storage not available in all contexts — silently ignore
+      chrome.storage.local.set({ srmLogs: [...logBuffer] }).catch(() => {
+        // Silently ignore
       });
     }
   },
@@ -134,7 +134,7 @@ const SRMLogger = {
   clearLogs() {
     logBuffer.length = 0;
     if (persistLogs && typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.session.set({ srmLogs: [] }).catch(() => {});
+      chrome.storage.local.set({ srmLogs: [] }).catch(() => {});
     }
   },
 
