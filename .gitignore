@@ -1,0 +1,55 @@
+# ─── Node / npm ───────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ─── Large Library Files (download separately — see setup-guide.md) ───────────
+extension/libs/opencv.js
+extension/libs/tesseract.min.js
+extension/libs/tesseract.worker.min.js
+extension/libs/tesseract-core.wasm.js
+extension/libs/tessdata/
+
+# ─── Build / Dist outputs ─────────────────────────────────────────────────────
+dist/
+build/
+*.crx
+*.pem
+*.zip
+
+# ─── OS junk ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Editor / IDE configs ─────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Environment / secrets ────────────────────────────────────────────────────
+.env
+.env.local
+.env.*
+
+# ─── Test CAPTCHA images (keep folder, ignore actual images) ──────────────────
+test-captchas/*.png
+test-captchas/*.jpg
+test-captchas/*.jpeg
+test-captchas/*.bmp
+test-captchas/*.gif
+
+# ─── Docs folder (local reference only — not committed to repo) ───────────────
+docs/
+
+# ─── Gemini / AI tool artifacts ───────────────────────────────────────────────
+.gemini/

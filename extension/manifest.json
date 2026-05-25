@@ -1,0 +1,74 @@
+{
+  "manifest_version": 3,
+  "name": "SRM Portal CAPTCHA Solver",
+  "version": "1.0.0",
+  "description": "Automatically solves the CAPTCHA on the SRM student portal using OCR and image preprocessing. For authorized educational use only.",
+  "author": "SRM Student Tools",
+
+  "icons": {
+    "16":  "assets/icons/icon16.png",
+    "48":  "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16":  "assets/icons/icon16.png",
+      "48":  "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    },
+    "default_title": "SRM CAPTCHA Solver"
+  },
+
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://sp.srmist.edu.in/*"
+      ],
+      "js": [
+        "libs/opencv.js",
+        "libs/tesseract.min.js",
+        "utils/logger.js",
+        "utils/storage.js",
+        "utils/messaging.js",
+        "preprocessing/preprocessor.js",
+        "utils/ocrEngine.js",
+        "content/captchaDetector.js",
+        "content/imageCapture.js",
+        "content/autofill.js",
+        "content/content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+
+  "host_permissions": [
+    "https://sp.srmist.edu.in/*"
+  ],
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "libs/*",
+        "assets/*",
+        "popup/*"
+      ],
+      "matches": [
+        "https://sp.srmist.edu.in/*"
+      ]
+    }
+  ]
+}

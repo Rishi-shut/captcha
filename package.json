@@ -1,0 +1,18 @@
+{
+  "name": "srm-captcha-solver",
+  "version": "1.0.0",
+  "description": "Chrome Extension: Auto-solve SRM portal CAPTCHA using Tesseract.js OCR + OpenCV.js preprocessing",
+  "private": true,
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "lint": "eslint extension/**/*.js",
+    "test": "open test-captchas/test-runner.html",
+    "dev": "echo 'Load the extension/  folder as an unpacked extension in chrome://extensions'"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
