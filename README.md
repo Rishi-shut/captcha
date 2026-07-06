@@ -256,13 +256,7 @@ The retry logic (up to 3 attempts) significantly improves the effective success 
 
 ---
 
-## Educational Disclaimer
 
-This project was created for educational purposes to demonstrate:
-- Chrome Extension development with Manifest V3
-- Browser-based OCR using Tesseract.js
-- Computer vision preprocessing with OpenCV.js
-- Content script and service worker architecture
 
 **This extension:**
 - ✅ Only works on `sp.srmist.edu.in`
