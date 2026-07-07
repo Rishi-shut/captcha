@@ -51,5 +51,4 @@ test-captchas/*.gif
 # ─── Docs folder (local reference only — not committed to repo) ───────────────
 docs/
 
-# ─── Gemini / AI tool artifacts ───────────────────────────────────────────────
-.gemini/
+
